@@ -2,13 +2,13 @@
 
 ## Context
 
-A self-hosted, LeetCode-style interview-prep tool that renders the Grind75 curated problem list as runnable Python exercises, starting with the 13 easys. Built because third-party sites (LeetCode, techinterviewhandbook.org) can disappear or degrade, and the user's prep workflow is to "lap" the easys — build deep familiarity with patterns, efficient implementations, and testing idioms. The stack mirrors `/Users/chrispryer/github/pryerdisposal.com/` (Rust/Axum + Postgres + SvelteKit) so architecture and ops feel identical. Python executes entirely in the browser via Pyodide in a Web Worker — no server-side sandbox. Progress, notes, and attempts persist in Postgres through a small REST API guarded by a single `X-API-Key` header; real multi-user auth is scaffolded but unmounted.
+A self-hosted, LeetCode-style interview-prep tool that renders the Grind75 curated problem list as runnable Python exercises, starting with the 13 easys. Built because third-party sites (LeetCode, techinterviewhandbook.org) can disappear or degrade, and the user's prep workflow is to "lap" the easys — build deep familiarity with patterns, efficient implementations, and testing idioms. The stack mirrors `/Users/chrispryer/github/pryerdisposal.com/` (Rust/Axum + Postgres + SvelteKit) so architecture and ops feel identical. Python executes entirely in the browser via Pyodide in a Web Worker — no server-side sandbox. Progress, notes, and attempts persist in Postgres through a small REST API guarded by a **JWT Bearer auth flow** mirroring pryerdisposal (login → access + refresh tokens → httpOnly cookies → server hooks auto-refresh). Single-user for MVP: one hardcoded `ADMIN_USERNAME` + argon2 `ADMIN_PASSWORD_HASH` in env. Multi-user (registration, multi-account) is a drop-in upgrade later.
 
 ## Decisions locked with the user
 
 - **Python runtime**: Pyodide in browser, in a Web Worker. Timeouts enforced by `worker.terminate()` from the main thread, then respawn.
 - **Backend**: Full stack mirror — Rust/Axum + Postgres.
-- **Auth (MVP)**: Single-user `X-API-Key` via env; copy `jwt.rs`/`password.rs` from pryerdisposal unmounted, for future multi-user.
+- **Auth (MVP)**: Full JWT Bearer flow, mirroring pryerdisposal verbatim. Single user — `ADMIN_USERNAME` + argon2 `ADMIN_PASSWORD_HASH` in env. `jwt.rs`/`password.rs` copied **and mounted**. Login page, access + refresh tokens in httpOnly cookies, auto-refresh in `hooks.server.ts`. Upgrade to multi-user later = drop hardcoded creds, add a `users` table, restore register/reset routes.
 - **Problem format**: `problems/<slug>/{problem.md, starter.py, tests.py, meta.json}` at the repo root. Pytest-style tests.
 - **Editor**: Monaco, lazy-loaded, ESM with Vite `?worker` imports for the editor worker.
 - **First milestone**: All 13 Grind75 easys authored end-to-end.
@@ -20,7 +20,7 @@ grind75/
 ├── Cargo.toml                  workspace { members = ["api"] }
 ├── docker-compose.yml          db + api + web with healthchecks
 ├── ecosystem.config.cjs        pm2 for api + web
-├── .env.example                GRIND75_API_KEY, DATABASE_URL, API_URL, ORIGIN
+├── .env.example                JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD_HASH, ACCESS_TOKEN_TTL_SECS, REFRESH_TOKEN_TTL_SECS, DATABASE_URL, API_URL, ORIGIN
 ├── README.md / CLAUDE.md / docs/architecture.md
 ├── scripts/
 │   └── generate-problems-manifest.ts   walks problems/, validates meta, emits manifest, copies md/py into web/static/problems/
@@ -30,13 +30,14 @@ grind75/
 │   ├── Cargo.toml              drop stripe/lettre/validator; keep axum, sqlx, argon2, jsonwebtoken, utoipa
 │   ├── migrations/
 │   │   ├── 20260416000001_create_problems_progress.sql
-│   │   └── 20260416000002_create_attempts.sql
+│   │   ├── 20260416000002_create_attempts.sql
+│   │   └── 20260416000003_create_refresh_tokens.sql
 │   └── src/
 │       ├── main.rs / lib.rs / app.rs / config.rs / db.rs / error.rs
-│       ├── auth/{mod.rs, middleware.rs (ApiKey extractor), jwt.rs, password.rs}   jwt/password copied but unmounted
-│       ├── dto/{progress.rs, attempt.rs}
+│       ├── auth/{mod.rs, middleware.rs (AuthUser JWT extractor), jwt.rs (issue/verify access + refresh), password.rs (argon2)}   mounted
+│       ├── dto/{auth.rs, progress.rs, attempt.rs}
 │       ├── models/{progress.rs, attempt.rs}
-│       └── routes/{health.rs, problems.rs, progress.rs, attempts.rs}
+│       └── routes/{health.rs, auth.rs (login/refresh/me), problems.rs, progress.rs, attempts.rs}
 └── web/                        adapted from pryerdisposal.com/web
     ├── package.json            add monaco-editor, marked, dompurify; drop stripe/leaflet
     ├── vite.config.ts          chunks: pyodide, monaco-editor, vendor-svelte; optimizeDeps.exclude: ['pyodide']
@@ -44,9 +45,9 @@ grind75/
     ├── biome.json / tsconfig.json / tailwind.config.js   copy; simplify brand palette
     ├── static/problems/<slug>/  populated by the build script
     └── src/
-        ├── hooks.server.ts     loads GRIND75_API_KEY from $env/dynamic/private into locals
+        ├── hooks.server.ts     reads access_token/refresh_token cookies, auto-refreshes on expiry, populates locals.user + locals.accessToken (mirrors pryerdisposal)
         ├── lib/
-        │   ├── api/{client.ts, errors.ts}   mirror pryerdisposal, X-API-Key header
+        │   ├── api/{client.ts, errors.ts}   mirror pryerdisposal, Authorization: Bearer <jwt> header
         │   ├── problems/{loader.ts, manifest.ts, types.ts, generated-manifest.json}
         │   ├── pyodide/{worker.ts, runner.ts, protocol.ts, pytest-harness.py}
         │   ├── monaco/{editor.ts, MonacoEditor.svelte}
@@ -54,13 +55,14 @@ grind75/
         │   └── utils/{time.ts, markdown.ts}
         └── routes/
             ├── +layout.{svelte,ts}
-            ├── +page.{svelte,server.ts}               dashboard
+            ├── +page.{svelte,server.ts}               dashboard (auth-guarded)
+            ├── login/+page.{svelte,server.ts}          login form → server action posts to /api/auth/login, sets httpOnly cookies
             ├── problem/[slug]/+page.{svelte,server.ts}
-            ├── settings/+page.svelte
-            └── api/{health,progress/[slug],attempts}/+server.ts   same-origin proxies for the browser
+            ├── settings/+page.svelte                   user info, logout, reset progress
+            └── api/{auth/login,auth/logout,health,progress/[slug],attempts}/+server.ts   same-origin proxies
 ```
 
-**Dropped from pryerdisposal**: Stripe, Leaflet, lettre/SMTP, Google OAuth, Google Analytics, holidays, closed-beta, announcements, admin/providers/orders/quotes/billing/users, register/login/reset flows (scaffolded, unmounted).
+**Dropped from pryerdisposal**: Stripe, Leaflet, lettre/SMTP, Google OAuth, Google Analytics, holidays, closed-beta, announcements, admin/providers/orders/quotes/billing/users, register/reset flows. **Login flow is kept and mounted** (single-user, env-driven creds).
 
 ## Problem data flow
 
@@ -122,7 +124,7 @@ type PytestSummary = {
 
 ## Python tooling: uv, ruff, ty
 
-`uv`, `ruff`, and `ty` (Astral's type checker) are native Rust binaries — none run inside Pyodide. Pyodide uses `micropip` for its own WASM-wheel installs. So: **host-side via uv** (authoring, CI, dep locking, lint, typecheck) and **browser-side via micropip** (pytest execution), with a pinned requirements file keeping them in sync.
+`uv`, `ruff`, and `ty` (Astral's type checker) are native Rust binaries — none run inside Pyodide. So: **host-side via uv** (authoring, CI, dep locking, lint, typecheck) and **browser-side via `pyodide.loadPackage('pytest')`** pulling from the self-hosted Pyodide distribution (no `micropip`, no PyPI at runtime). Keep the host-side `pytest` pin in `pyproject.toml` in step with `pyodide-lock.json`.
 
 ### uv (host-side)
 
@@ -169,41 +171,83 @@ Scoped to **M6 (optional)**, not M1–M5.
 
 ## Routes
 
-- `/` — dashboard. `+page.server.ts` merges the static manifest with `ApiClient.getProgress()`. Groups cards by pattern. Header strip shows "N of 13 solved".
+All routes except `/login` require auth — `hooks.server.ts` redirects unauthenticated requests to `/login?redirect=<original>`.
+
+- `/login` — username + password form. Server action POSTs to `/api/auth/login`, which forwards to the Rust API; on success the server sets httpOnly `access_token` + `refresh_token` cookies and redirects to `?redirect` (default `/`).
+- `/` — dashboard. `+page.server.ts` merges the static manifest with `ApiClient.getProgress()`. Groups cards by pattern. Header strip shows "N of 13 solved" + logged-in username.
 - `/problem/[slug]` — editor view. Loads meta + files + per-slug progress. Layout: markdown left, tabbed pane right (Code / Tests readonly / Output). Buttons: Run (no persist), Submit (persists attempt + status), Save draft, Reset to starter. Notes textarea below editor with debounced (500ms) autosave.
-- `/settings` — API base URL, API-key fingerprint, counts; export attempts as JSON; reset progress.
-- `/api/health`, `/api/progress/[slug]`, `/api/attempts` — SvelteKit `+server.ts` endpoints that proxy to the Rust API using `locals.apiKey`. The browser only ever talks same-origin.
+- `/settings` — logged-in user info, API base URL, access-token expiry, counts; export attempts as JSON; reset progress; logout.
+- `/api/auth/{login,logout}`, `/api/health`, `/api/progress/[slug]`, `/api/attempts` — SvelteKit `+server.ts` endpoints that proxy to the Rust API using `locals.accessToken` (auto-refreshed in hooks.server.ts). The browser only ever talks same-origin.
 
 ## Rust API
 
-Base `/api`. Auth via `X-API-Key` middleware (constant-time compare). `GET /api/health` and `GET /api/problems` are unauthenticated.
+Base `/api`. Auth via `AuthUser` extractor that validates `Authorization: Bearer <jwt>` against `JWT_SECRET`. `GET /api/health` and `POST /api/auth/login` + `POST /api/auth/refresh` are unauthenticated. `GET /api/problems` is unauthenticated (problem content is not secret).
 
 ```
 GET    /api/health
+POST   /api/auth/login                    {username, password}       -> {access_token, refresh_token, user}
+POST   /api/auth/refresh                  {refresh_token}            -> {access_token, refresh_token}
+GET    /api/auth/me                       (auth)                     -> {username}
 GET    /api/problems                      (optional: reads problems/ at startup, caches)
-GET    /api/progress
-GET    /api/progress/:slug
-PUT    /api/progress/:slug                upsert {status?, last_code?, notes?}
-POST   /api/attempts                      {slug, code, passed, duration_ms, pytest_summary}
-GET    /api/attempts?slug=&limit=
-DELETE /api/progress                      reset all
+GET    /api/progress                      (auth)
+GET    /api/progress/:slug                (auth)
+PUT    /api/progress/:slug                (auth) upsert {status?, last_code?, notes?}
+POST   /api/attempts                      (auth) {slug, code, passed, duration_ms, pytest_summary}
+GET    /api/attempts?slug=&limit=         (auth)
+DELETE /api/progress                      (auth) reset all
 ```
 
 `POST /api/attempts` transactionally inserts into `attempts` AND upserts `problems_progress` (increment `attempt_count`, stamp `solved_at` on first transition to `solved`) so one round-trip records both.
 
-`Config` drops stripe/google/smtp/closed_beta; adds `api_key: String` (required). `auth/middleware.rs`:
+### Config
 
-```rust
-pub struct ApiKey; // marker
-impl<S: Send+Sync> FromRequestParts<S> for ApiKey where Config: FromRef<S> {
-    type Rejection = AppError;
-    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
-        let cfg = Config::from_ref(state);
-        let header = parts.headers.get("x-api-key").and_then(|v| v.to_str().ok()).ok_or(AppError::Unauthorized)?;
-        if constant_time_eq(header.as_bytes(), cfg.api_key.as_bytes()) { Ok(ApiKey) } else { Err(AppError::Unauthorized) }
-    }
-}
+`Config` drops stripe/google/smtp/closed_beta. Adds (all required, no defaults in prod):
+- `jwt_secret: String` — HMAC signing key for access + refresh tokens.
+- `admin_username: String` — the single permitted username.
+- `admin_password_hash: String` — argon2 hash; generate via a one-off `cargo run --bin hash-password -- 'mypassword'` helper copied from pryerdisposal (or reused if present).
+- `access_token_ttl_secs: u64` — default 900 (15 min).
+- `refresh_token_ttl_secs: u64` — default 2592000 (30 days).
+
+### Middleware
+
+Copy `AuthUser` extractor from pryerdisposal. It pulls the `Authorization: Bearer <jwt>` header, verifies the signature + expiry against `JWT_SECRET`, and exposes `user.username` to handlers. Unauthenticated routes are registered on a separate router branch that doesn't apply the extractor.
+
+### Login flow
+
+`POST /api/auth/login` loads `admin_username` / `admin_password_hash` from config, constant-time-compares the submitted username, verifies the submitted password against the argon2 hash, then issues a signed access + refresh JWT pair (both carry a random UUIDv4 `jti`). `POST /api/auth/refresh` validates the submitted refresh token's signature + expiry + revocation status, rotates it (see below), and issues a new access + refresh pair.
+
+### Auth hardening
+
+**Token TTLs & secret rotation**
+- Access token: **15 min** (`ACCESS_TOKEN_TTL_SECS=900`). Short enough that leaked access tokens expire before they're useful; long enough that `hooks.server.ts` isn't refreshing on every request.
+- Refresh token: **30 days** (`REFRESH_TOKEN_TTL_SECS=2592000`). Refreshed (rotated) on every use, so actual per-token lifetime is typically the session idle time.
+- `JWT_SECRET` rotation = restart → all tokens invalid → single forced re-login. Acceptable for a personal tool. If zero-downtime rotation ever matters, support `JWT_SECRET_PREVIOUS` as a read-only validation key for a grace window (copy the pattern from the usual JWT key-rotation recipe; not needed now).
+
+**Refresh token rotation + replay protection**
+- Every refresh token has a `jti` (UUIDv4) claim embedded at issue time.
+- `refresh_tokens` table stores `(jti PK, username, issued_at, expires_at, revoked_at, replaced_by, user_agent, ip)`.
+- On refresh: JWT sig/expiry valid AND row exists AND `revoked_at IS NULL` → mark old row `revoked_at=NOW()`, insert new row with `replaced_by` pointing back, return new pair.
+- On refresh with an already-revoked token → **theft signal**: revoke the entire chain (walk `replaced_by` forward, set all `revoked_at`), force re-login. Log at `WARN` with `jti`, IP, user-agent. Both the attacker and the legitimate user get kicked out — this is by design and matches OAuth2 BCP.
+- On `POST /api/auth/logout`: revoke the current refresh token's `jti`, clear cookies. Access tokens ride out their <=15min expiry (acceptable).
+- Expired rows are cleaned lazily (refresh handler deletes rows where `expires_at < NOW() - '7 days'::interval`) — no cron needed.
+
+**Error responses**
+Typed error codes (not free-text), so the web can branch reliably:
+```json
+{ "error": "token_expired",     "message": "..." }   // 401, access token past expiry
+{ "error": "token_invalid",     "message": "..." }   // 401, signature/format bad
+{ "error": "token_missing",     "message": "..." }   // 401, no Authorization header
+{ "error": "refresh_expired",   "message": "..." }   // 401, refresh past expiry
+{ "error": "refresh_revoked",   "message": "..." }   // 401, refresh already used/revoked (theft-signal variant logged separately)
+{ "error": "credentials_invalid","message": "Invalid username or password" }  // 401 on /login — same text for bad username vs bad password to avoid user enumeration
+{ "error": "rate_limited",      "message": "..." }   // 429 on /login after too many attempts
 ```
+`hooks.server.ts` maps `token_expired` → attempt refresh; `refresh_expired` / `refresh_revoked` / `refresh_invalid` → clear cookies, redirect to `/login`.
+
+**Logging & rate limiting**
+- Log all auth events via `tracing` at structured levels: `INFO` for successful login/refresh/logout; `WARN` for failed login, expired/invalid tokens, refresh rotation of revoked token; `ERROR` for theft signals.
+- Include `username` (attempted), source IP, user-agent, `jti` where relevant. **Never** log passwords, JWT strings, or cookie contents.
+- Rate-limit `POST /api/auth/login` with `tower-governor` (or equivalent): **5 attempts / minute / IP**, respond with `429 Retry-After`. Per-instance in-memory counter is fine for our single-replica deploy.
 
 ## Postgres schema
 
@@ -238,15 +282,33 @@ CREATE INDEX idx_attempts_slug_created ON attempts(slug, created_at DESC);
 CREATE INDEX idx_attempts_passed ON attempts(passed);
 ```
 
+`api/migrations/20260416000003_create_refresh_tokens.sql`
+```sql
+CREATE TABLE refresh_tokens (
+  jti          UUID PRIMARY KEY,
+  username     TEXT NOT NULL,           -- single-user MVP; replace with user_id FK on multi-user migration
+  issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at   TIMESTAMPTZ NOT NULL,
+  revoked_at   TIMESTAMPTZ,
+  replaced_by  UUID REFERENCES refresh_tokens(jti),
+  user_agent   TEXT,
+  ip           INET
+);
+CREATE INDEX idx_refresh_tokens_active ON refresh_tokens(expires_at) WHERE revoked_at IS NULL;
+CREATE INDEX idx_refresh_tokens_username ON refresh_tokens(username);
+```
+
 ## Web ↔ API client
 
-Mirror `/Users/chrispryer/github/pryerdisposal.com/web/src/lib/api/client.ts`: same class shape, swap `Authorization: Bearer` for `X-API-Key`.
+Mirror `/Users/chrispryer/github/pryerdisposal.com/web/src/lib/api/client.ts` verbatim — same `Authorization: Bearer <accessToken>` header, same error-class hierarchy, same constructor shape.
 
-**Secret handling** — mirrors pryerdisposal's `event.locals.accessToken` pattern:
-- `GRIND75_API_KEY` is server-only (no `PUBLIC_` prefix). Read via `$env/dynamic/private`.
-- `hooks.server.ts` stores it in `event.locals.apiKey`.
-- `ApiClient` is only constructed in `+*.server.ts` / `+server.ts` files.
-- Browser mutations go through same-origin `/api/*/+server.ts` endpoints that forward to the Rust API.
+**Token + cookie handling** (mirrors pryerdisposal exactly):
+- `JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` are server-only (no `PUBLIC_` prefix). Read via `$env/dynamic/private` on the Rust API side; web side never sees them.
+- On successful `POST /api/auth/login` (proxied through `web/src/routes/api/auth/login/+server.ts`), the server sets **httpOnly, Secure, SameSite=Strict, Path=/** cookies `access_token` and `refresh_token` with `Max-Age` matching their TTLs. `SameSite=Strict` (stricter than pryerdisposal's Lax) is appropriate because grind75 has no cross-site integration surface — the cost is that links from email/external sites land logged-out, which is fine for a bookmarked personal tool. `Secure` is set in all environments; browsers accept it over `http://localhost` for dev.
+- `hooks.server.ts` runs on every request: reads the two cookies, validates `access_token` locally (decode + expiry check only, no API round-trip), and if expired calls `POST /api/auth/refresh` with the refresh token to rotate. Populates `event.locals.user` and `event.locals.accessToken` for downstream `load` / server actions.
+- `ApiClient` is constructed only in `+*.server.ts` / `+server.ts` files with `locals.accessToken`.
+- Browser never sees tokens (httpOnly cookies) and never calls the Rust API directly. All mutations go through same-origin `/api/*/+server.ts` endpoints that forward with the Bearer header.
+- Logout (`POST /api/auth/logout`) clears both cookies **and** calls the Rust API to revoke the current refresh token's `jti` (sets `revoked_at=NOW()` on its row). Access tokens ride out their ≤15min expiry — acceptable given the TTL floor.
 
 ## Tooling config
 
@@ -258,11 +320,11 @@ Adapt:
 - `web/vite.config.ts`: `manualChunks` → `pyodide`, `monaco-editor`, `vendor-svelte`, `vendor`; `optimizeDeps.exclude: ['pyodide']`.
 - `web/svelte.config.js`: adapter-node only; drop BUILD_PREVIEW branch.
 - `api/Cargo.toml`: drop `async-stripe`, `lettre`, heavy validators. Keep axum, sqlx, argon2, jsonwebtoken, utoipa, utoipa-swagger-ui, tower, tower-http, chrono, uuid, serde, dotenvy, tracing, thiserror.
-- Root: `Cargo.toml` workspace, `docker-compose.yml` (db `grind75_dev`, strip Stripe/JWT vars, add `GRIND75_API_KEY`), `ecosystem.config.cjs` (two apps).
+- Root: `Cargo.toml` workspace, `docker-compose.yml` (db `grind75_dev`, strip Stripe; add `JWT_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH`, `ACCESS_TOKEN_TTL_SECS`, `REFRESH_TOKEN_TTL_SECS`), `ecosystem.config.cjs` (two apps).
 
 ## Milestones
 
-**M0 — Scaffolding.** Layout above exists with stub handlers. `docker compose up` boots db + api + web; `/api/health` returns 200; `/` renders placeholder. Migrations apply. `npm run check` + `cargo check` green.
+**M0 — Scaffolding + auth.** Layout above exists with stub handlers. `docker compose up` boots db + api + web; `/api/health` returns 200; `/` redirects to `/login`; a valid login → cookies set → `/` renders (placeholder). Migrations apply. `POST /api/auth/login` + `/refresh` + `AuthUser` extractor all mounted and exercised by an integration test. `npm run check` + `cargo check` green.
 
 **M1 — Pyodide worker.** `worker.ts`/`runner.ts`/`protocol.ts`/`pytest-harness.py` in place. Vitest or a throwaway dev page exercises: hardcoded two-sum starter+tests returns a structured `PytestSummary`; `while True: pass` triggers timeout termination and next run still works (respawn).
 
@@ -296,15 +358,18 @@ Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and
 
 **Routes**
 - `web/src/routes/+page.{svelte,server.ts}`
+- `web/src/routes/login/+page.{svelte,server.ts}`
 - `web/src/routes/problem/[slug]/+page.{svelte,server.ts}`
-- `web/src/routes/api/{progress/[slug],attempts}/+server.ts`
+- `web/src/routes/settings/+page.svelte`
+- `web/src/routes/api/{auth/login,auth/logout,progress/[slug],attempts,health}/+server.ts`
 
 **Reuse from pryerdisposal (adapt, don't rewrite)**
-- `web/src/lib/api/client.ts` — pattern from `/Users/chrispryer/github/pryerdisposal.com/web/src/lib/api/client.ts`
+- `web/src/lib/api/client.ts` — pattern from `/Users/chrispryer/github/pryerdisposal.com/web/src/lib/api/client.ts` (Bearer header)
 - `web/src/lib/api/errors.ts`
-- `web/src/hooks.server.ts` — skeleton from pryerdisposal's, strip auth/refresh
-- `api/src/{main.rs, lib.rs, db.rs, error.rs, config.rs, auth/*}` — from pryerdisposal's `api/src/*`
-- `api/src/routes/health.rs` — copy as-is
+- `web/src/hooks.server.ts` — full auth/refresh flow from pryerdisposal's, kept intact
+- `api/src/{main.rs, lib.rs, db.rs, error.rs, config.rs}` — from pryerdisposal's `api/src/*`
+- `api/src/auth/{mod.rs, middleware.rs, jwt.rs, password.rs}` — **mounted**, including `AuthUser` extractor
+- `api/src/routes/{health.rs, auth.rs}` — login/refresh/me handlers from pryerdisposal, trimmed to single-user env-backed creds
 
 **Python tooling (new)**
 - `pyproject.toml` (repo root) — `[dependency-groups]`, `[tool.ruff]`, `[tool.ty]`
@@ -317,6 +382,7 @@ Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and
 - `Cargo.toml`, `docker-compose.yml`, `ecosystem.config.cjs`, `api/Dockerfile`, `web/Dockerfile`
 - `api/migrations/20260416000001_create_problems_progress.sql`
 - `api/migrations/20260416000002_create_attempts.sql`
+- `api/migrations/20260416000003_create_refresh_tokens.sql`
 
 ## Risks
 
@@ -324,23 +390,45 @@ Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and
 - **Pyodide cold start (~6s)**: defer to first Run click; dashboard remains instant. No preload in MVP.
 - **pytest in Pyodide**: write per-run to a fresh tmp dir; pin `pytest` version; no `conftest.py` for authored problems.
 - **Worker terminate cost**: respawn = another ~6s after a timeout. Surface in the output pane.
-- **API key**: single shared secret fine for single-user self-hosted. Never logged, never in `PUBLIC_` env. Rotation requires restarting api + web together.
+- **Auth secrets**: `JWT_SECRET`, `ADMIN_PASSWORD_HASH`, and raw JWT strings never logged, never in `PUBLIC_` env. Rotating `JWT_SECRET` invalidates all outstanding tokens (intentional kill-switch). Rotating the admin password = regenerate the argon2 hash, update env, restart api. A stolen access token is usable for ≤15 min; a stolen refresh token is rotation-single-use — the first reuse kills the entire chain (see Auth hardening).
+- **Refresh token chain cleanup**: the `refresh_tokens` table grows linearly with session activity. The lazy cleanup in the refresh handler (delete rows where `expires_at < NOW() - '7 days'`) keeps it bounded in normal operation, but a pathological login-loop could still accrete rows between runs of that path. If the table ever gets large, add a scheduled `DELETE` job — not needed at MVP scale (one user, a few sessions/week).
+- **Rate limiting is per-instance**: `tower-governor` state lives in memory. A single replica is our target deploy, so this is fine. If we ever horizontally scale, move to a shared store (Redis) or accept per-replica limits as a loose upper bound.
 - **Content hot-reload**: editing `problems/<slug>/*` during `npm run dev` needs manifest re-run; add a chokidar watcher in the script or accept a restart.
 - **Pyodide release = Python version + package lockfile**: bumping Pyodide changes the Python version and every bundled package (including pytest) in lockstep. Treat upgrades as a ritual — re-stage the bundle, re-sync the host-side pytest pin in `pyproject.toml` to match `pyodide-lock.json`, re-run CI, verify test output shape hasn't drifted in ways the worker's pytest harness cares about.
 - **Packages Pyodide doesn't bundle**: if we ever add a dep that isn't in Pyodide's lockfile, the provisioning story changes — pure-Python deps can `micropip.install` from PyPI (stage locally for offline), but C-extension deps **must** come from Pyodide's registry (PyPI wheels target host OS, not Emscripten). Not an MVP concern since pytest is bundled.
 
+## Multi-user migration outline (future)
+
+When we outgrow single-user, the MVP upgrades cleanly — no schema rewrite, just additions:
+
+1. **`users` table** — `id UUID PK, username UNIQUE, email UNIQUE, password_hash, created_at, last_login_at`. Backfill the MVP admin as row 1.
+2. **JWT claims** — add `sub = user_id` (UUID) alongside `username`. `AuthUser` extractor switches to resolving by `sub`; `username` becomes a display-only claim.
+3. **FK migrations** — `problems_progress.slug` becomes `(user_id, slug)` composite PK; `attempts` gains `user_id NOT NULL`; `refresh_tokens.username TEXT` becomes `user_id UUID REFERENCES users(id) ON DELETE CASCADE`. Migration backfills everything to admin row 1, then adds the constraints.
+4. **Config** — drop `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH`. Keep `JWT_SECRET`, TTLs.
+5. **Restore routes from pryerdisposal**: `POST /api/auth/register`, `POST /api/auth/request-password-reset`, `POST /api/auth/reset-password`. Password reset re-introduces the SMTP dependency (re-add `lettre` + `SMTP_*` env). Registration gates behind an invite code or email verification — details TBD.
+6. **Web** — `/login` gains a "Register" link; add `/register`, `/forgot-password`, `/reset-password/[token]` routes. Dashboard header shows the logged-in user's name instead of a hardcoded admin badge.
+7. **Rate limiting** — per-user (not just per-IP) lockout on repeated login failures.
+
+Scope to keep in mind now: the `refresh_tokens` schema already uses `username TEXT` so the migration to `user_id UUID` is a single `ALTER TABLE` + backfill. The JWT library and cookie flow carry over verbatim.
+
 ## Verification (end-to-end)
 
-1. `cp .env.example .env`, set `GRIND75_API_KEY=dev-key`; propagate to `api/.env` and `web/.env`.
+1. `cp .env.example .env`. Generate a dev `JWT_SECRET` (`openssl rand -hex 32`) and an argon2 hash of your password (`cargo run --bin hash-password -- 'dev'`), set `ADMIN_USERNAME=me` + `ADMIN_PASSWORD_HASH=<hash>`; propagate to `api/.env` and `web/.env`.
 2. `docker compose up -d db`; wait for `pg_isready`.
 3. `cd api && cargo run` — migrations apply, listens on `:3001`.
 4. `curl -i localhost:3001/api/health` → 200.
-5. `curl -H "X-API-Key: wrong" localhost:3001/api/progress` → 401; with correct key → `[]`.
-6. `cd web && npm install && npm run check && npm test` — Biome, svelte-check, Vitest green. Vitest covers protocol types + manifest loader.
-7. `npm run dev`, open `http://localhost:5173/` — 13 cards, all "not started".
-8. Click **Two Sum**. First Run shows "Loading Python…" (~6s), then all tests fail on unmodified starter.
-9. Paste a correct hashmap solution; Run → all pass; Submit → card flips to "solved".
-10. Full reload — code, notes, status, attempt_count persist.
-11. `while True: pass` → timeout message within 10s; next Run of a correct solution still works (respawn).
-12. `docker compose down && docker compose up -d --build`; open `http://localhost:3000/` (adapter-node); Two Sum still "solved" (Postgres volume).
-13. Optional content smoke: `node scripts/verify-problems.mjs` walks `problems/*`, runs each starter against each tests.py (fails cleanly), then each canonical solution (all pass).
+5. `curl -i localhost:3001/api/progress` → 401 (no bearer). `curl -H "Authorization: Bearer garbage" localhost:3001/api/progress` → 401.
+6. `curl -X POST -H 'content-type: application/json' -d '{"username":"me","password":"wrong"}' localhost:3001/api/auth/login` → 401. With `"password":"dev"` → 200 with `{access_token, refresh_token, user}`.
+7. `curl -H "Authorization: Bearer $ACCESS" localhost:3001/api/progress` → `[]`.
+8. `cd web && npm install && npm run check && npm test` — Biome, svelte-check, Vitest green. Vitest covers protocol types, manifest loader, and auth hooks.
+9. `npm run dev`, open `http://localhost:5173/` — redirects to `/login`. Submit creds → redirects to `/` with 13 cards, all "not started".
+10. Click **Two Sum**. First Run shows "Loading Python…" (~6s), then all tests fail on unmodified starter.
+11. Paste a correct hashmap solution; Run → all pass; Submit → card flips to "solved".
+12. Full reload — still logged in (cookies), code/notes/status/attempt_count persist.
+13. Let access token expire (or edit its TTL down for the test); next request triggers transparent refresh in `hooks.server.ts` — user never sees a re-login. In DB: old `refresh_tokens.jti` has `revoked_at` set and `replaced_by` pointing at the new row.
+14. **Refresh replay / theft-signal**: capture `refresh_token` cookie after login, trigger a refresh so it rotates, then replay the now-revoked token directly against `POST /api/auth/refresh` → 401 with `{"error":"refresh_revoked"}`; the active successor chain is also revoked, and the legitimate browser session is forced to re-login on its next `hooks.server.ts` cycle. A `WARN`-level log line with `jti`, IP, and user-agent is emitted.
+15. **Logout revocation**: click Logout in `/settings` → cookies cleared → `refresh_tokens` row for that `jti` has `revoked_at` set → attempting to reuse the captured refresh token returns 401 `refresh_revoked`.
+16. **Login rate limit**: 6 rapid bad-password POSTs to `/api/auth/login` from the same IP → the 6th responds `429 rate_limited` with a `Retry-After` header.
+17. `while True: pass` → timeout message within 10s; next Run of a correct solution still works (respawn).
+18. `docker compose down && docker compose up -d --build`; open `http://localhost:3000/` (adapter-node); login → Two Sum still "solved" (Postgres volume).
+19. Optional content smoke: `uv run pytest problems/` walks every slug, starters fail cleanly, canonical solutions pass.

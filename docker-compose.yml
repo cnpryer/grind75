@@ -1,0 +1,69 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: grind75-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-grind75_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-grind75}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grind75} -d ${POSTGRES_DB:-grind75_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: api
+      dockerfile: Dockerfile
+    container_name: grind75-api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-grind75}:${POSTGRES_PASSWORD:-dev_password}@db:5432/${POSTGRES_DB:-grind75_dev}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
+      ACCESS_TOKEN_TTL_SECS: ${ACCESS_TOKEN_TTL_SECS:-900}
+      REFRESH_TOKEN_TTL_SECS: ${REFRESH_TOKEN_TTL_SECS:-2592000}
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      RUST_LOG: ${RUST_LOG:-info,api=debug}
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: web
+      dockerfile: Dockerfile
+    container_name: grind75-web
+    environment:
+      API_URL: http://api:3001
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:

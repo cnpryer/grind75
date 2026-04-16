@@ -1,0 +1,38 @@
+# Rust build artifacts
+target/
+
+# Node.js
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build output
+web/build/
+web/.svelte-kit/
+
+# Generated content
+web/static/problems/
+web/static/pyodide/
+web/src/lib/problems/generated-manifest.json
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Editor directories
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Deployment artifacts
+deploy-package/
+*.tar.gz

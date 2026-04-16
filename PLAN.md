@@ -93,9 +93,9 @@ Recommended: **build-time manifest + static asset serving** (rejected alternativ
 
 ## Pyodide worker
 
-- Load Pyodide from jsdelivr CDN (version-pinned); `static/pyodide/` is the self-host fallback.
+- **Self-host Pyodide** at `web/static/pyodide/` — version-pinned bundle, staged at build time from the `pyodide/pyodide` GitHub release by `scripts/stage-pyodide.mjs`. No CDN at runtime: deterministic, offline-capable after first app load, same-origin cache-friendly. Pinning the Pyodide release pins Python **and** every bundled package (including pytest) via `pyodide-lock.json`.
 - Main thread never imports Pyodide. `runner.ts` spawns the worker lazily on the first Run click, not on page load. Show a one-time "Loading Python…" indicator (~6s cold start).
-- Worker init: `loadPackage('micropip')` → `micropip.install('pytest')`. Persists across runs in the same problem session.
+- **Worker init**: `await pyodide.loadPackage('pytest')` — pytest is part of Pyodide's bundled package set, so provisioning is a single call against the same-origin Pyodide distribution. No PyPI at runtime. No wheel staging. No `micropip`. Persists across runs in the same problem session.
 - Per run: write `solution.py` and `test_problem.py` to `/home/pyodide/`, run `pytest.main([...])` under a custom collector plugin (`pytest-harness.py`) that hooks `pytest_runtest_logreport` to collect `{name, outcome, durationMs, failureMessage(≤2KB), stdout}` per test. Return structured JSON.
 
 ### Message protocol (`lib/pyodide/protocol.ts`)
@@ -119,6 +119,39 @@ type PytestSummary = {
 ```
 
 `runner.run()` is a Promise with an internal `Map<requestId, {resolve, reject, timer}>`. On timeout: `worker.terminate()`, reject with `TimeoutError`, reset the worker instance so the next run respawns.
+
+## Python tooling: uv, ruff, ty
+
+`uv`, `ruff`, and `ty` (Astral's type checker) are native Rust binaries — none run inside Pyodide. Pyodide uses `micropip` for its own WASM-wheel installs. So: **host-side via uv** (authoring, CI, dep locking, lint, typecheck) and **browser-side via micropip** (pytest execution), with a pinned requirements file keeping them in sync.
+
+### uv (host-side)
+
+Repo-level Python toolchain for authoring and CI. Files:
+- `pyproject.toml` at repo root — declares `requires-python`, `[dependency-groups] dev = ["pytest", "ruff", "ty"]`, `[tool.ruff]`, `[tool.ty]`. Pin `pytest` to the version Pyodide bundles (check `pyodide-lock.json` in the staged Pyodide distribution) so `uv run pytest` matches browser behavior.
+- `uv.lock` — committed.
+
+Author / CI workflow:
+- `uv sync` → dev env with pytest + ruff + ty.
+- `uv run pytest problems/<slug>/tests.py` → verify a problem's tests run against a solution on the host (no browser, no Pyodide) — the fastest authoring loop.
+- `uv run ruff check problems/` / `uv run ruff format problems/` → lint/format authored Python.
+- `uv run ty check problems/` → type-check starters, solutions, and tests. Catches signature drift between `entry_function` in `meta.json` and the actual `starter.py`/`tests.py` before the browser ever sees it.
+- CI: `uv sync --locked && uv run pytest && uv run ruff check && uv run ty check`.
+
+### Browser-side pytest
+
+No `micropip.install` at runtime. Pytest comes from Pyodide's own bundled package set via `pyodide.loadPackage('pytest')` against the self-hosted `/pyodide/` distribution. The Pyodide release **is** our lockfile — pinning the Pyodide version pins the pytest version too. Keep the host-side pytest pin in `pyproject.toml` in step with what `pyodide-lock.json` ships (check on every Pyodide bump) so `uv run pytest` and browser pytest behave identically.
+
+### ruff & ty in the browser (future, post-MVP)
+
+For in-editor lint/format (and eventually type-check), use Astral's WASM bindings — **independent of Pyodide**.
+
+- **ruff**: `@astral-sh/ruff-wasm-web` (confirm exact package name at implementation time; Astral ships web/node variants). ~3MB WASM; exposes `Workspace.check()` / `Workspace.format()`. Integration:
+  - `web/src/lib/ruff/linter.ts` — lazy-imported, runs in its own Web Worker.
+  - Monaco: map violations → `monaco.editor.MarkerData[]` via `setModelMarkers`; format-on-save bound to Cmd/Ctrl-S.
+  - Config: `[tool.ruff]` in `pyproject.toml`, read at build time and injected into the Ruff Workspace constructor — single source of truth with host-side `uv run ruff`.
+- **ty**: track Astral's ty-wasm release (ty is newer than ruff; a browser-targetable build may land after MVP). When available, mirror the ruff wiring: dedicated worker, Monaco markers for type diagnostics, config from `[tool.ty]`. Until then, type-checking stays host-only via `uv run ty`.
+
+Scoped to **M6 (optional)**, not M1–M5.
 
 ## Monaco integration
 
@@ -239,7 +272,9 @@ Adapt:
 
 **M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
 
-**M5 — Content complete.** All 13 easys authored (`problem.md`, `starter.py`, `tests.py`, `meta.json` ≥5 pytest cases each incl. obvious + edge). Smoke test: starters fail cleanly; a canonical solution passes each. README quickstart updated.
+**M5 — Content complete.** All 13 easys authored (`problem.md`, `starter.py`, `tests.py`, `meta.json` ≥5 pytest cases each incl. obvious + edge). Smoke test: `uv run pytest problems/` iterates every slug (starters fail cleanly; canonical solutions pass). README quickstart updated.
+
+**M6 — In-browser lint/format (optional, post-MVP).** Wire `@astral-sh/ruff-wasm-web` in a dedicated Web Worker; surface diagnostics as Monaco markers; format-on-save action. Ruff config sourced from `[tool.ruff]` in `pyproject.toml`. See "Python tooling: uv & ruff".
 
 Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and-sell-stock, valid-palindrome, invert-binary-tree, valid-anagram, binary-search, flood-fill, lowest-common-ancestor-of-a-bst, balanced-binary-tree, linked-list-cycle, implement-queue-using-stacks`.
 
@@ -271,6 +306,13 @@ Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and
 - `api/src/{main.rs, lib.rs, db.rs, error.rs, config.rs, auth/*}` — from pryerdisposal's `api/src/*`
 - `api/src/routes/health.rs` — copy as-is
 
+**Python tooling (new)**
+- `pyproject.toml` (repo root) — `[dependency-groups]`, `[tool.ruff]`, `[tool.ty]`
+- `uv.lock` (generated, committed)
+- `scripts/stage-pyodide.mjs` — downloads & unpacks the pinned Pyodide release into `web/static/pyodide/` (run at install/build; output is gitignored)
+- `web/src/lib/ruff/linter.ts` (M6 only)
+- `web/src/lib/ty/checker.ts` (M6 only, if ty-wasm available)
+
 **Infra**
 - `Cargo.toml`, `docker-compose.yml`, `ecosystem.config.cjs`, `api/Dockerfile`, `web/Dockerfile`
 - `api/migrations/20260416000001_create_problems_progress.sql`
@@ -284,6 +326,8 @@ Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and
 - **Worker terminate cost**: respawn = another ~6s after a timeout. Surface in the output pane.
 - **API key**: single shared secret fine for single-user self-hosted. Never logged, never in `PUBLIC_` env. Rotation requires restarting api + web together.
 - **Content hot-reload**: editing `problems/<slug>/*` during `npm run dev` needs manifest re-run; add a chokidar watcher in the script or accept a restart.
+- **Pyodide release = Python version + package lockfile**: bumping Pyodide changes the Python version and every bundled package (including pytest) in lockstep. Treat upgrades as a ritual — re-stage the bundle, re-sync the host-side pytest pin in `pyproject.toml` to match `pyodide-lock.json`, re-run CI, verify test output shape hasn't drifted in ways the worker's pytest harness cares about.
+- **Packages Pyodide doesn't bundle**: if we ever add a dep that isn't in Pyodide's lockfile, the provisioning story changes — pure-Python deps can `micropip.install` from PyPI (stage locally for offline), but C-extension deps **must** come from Pyodide's registry (PyPI wheels target host OS, not Emscripten). Not an MVP concern since pytest is bundled.
 
 ## Verification (end-to-end)
 

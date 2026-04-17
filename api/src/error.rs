@@ -70,6 +70,9 @@ pub enum AppError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
     #[error("Internal error: {0}")]
     Internal(String),
 }
@@ -96,6 +99,9 @@ impl IntoResponse for AppError {
             }
             AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg.clone()),
+            AppError::NotImplemented(msg) => {
+                (StatusCode::NOT_IMPLEMENTED, "not_implemented", msg.clone())
+            }
             AppError::Internal(msg) => {
                 tracing::error!("Internal error: {msg}");
                 (

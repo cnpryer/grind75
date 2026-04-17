@@ -24,18 +24,34 @@ use crate::routes;
         routes::auth::refresh,
         routes::auth::logout,
         routes::auth::me,
+        routes::problems::list,
+        routes::progress::list,
+        routes::progress::get_one,
+        routes::progress::upsert,
+        routes::progress::reset,
+        routes::attempts::list,
+        routes::attempts::create,
     ),
     components(schemas(
         routes::health::HealthResponse,
+        routes::problems::ProblemSummary,
         crate::dto::auth::LoginRequest,
         crate::dto::auth::RefreshRequest,
         crate::dto::auth::LogoutRequest,
         crate::dto::auth::AuthResponse,
         crate::dto::auth::UserProfile,
+        crate::dto::progress::ProgressStatus,
+        crate::dto::progress::ProgressRecord,
+        crate::dto::progress::UpsertProgressRequest,
+        crate::dto::attempt::CreateAttemptRequest,
+        crate::dto::attempt::AttemptRecord,
     )),
     tags(
         (name = "health", description = "Health check"),
         (name = "auth", description = "Authentication"),
+        (name = "problems", description = "Problem catalog"),
+        (name = "progress", description = "Per-problem progress"),
+        (name = "attempts", description = "Submission history"),
     ),
     modifiers(&SecurityAddon)
 )]
@@ -93,6 +109,19 @@ pub fn create_router(pool: PgPool, config: Config) -> Router {
         .route("/api/auth/refresh", post(routes::auth::refresh))
         .route("/api/auth/logout", post(routes::auth::logout))
         .route("/api/auth/me", get(routes::auth::me))
+        .route("/api/problems", get(routes::problems::list))
+        .route(
+            "/api/progress",
+            get(routes::progress::list).delete(routes::progress::reset),
+        )
+        .route(
+            "/api/progress/{slug}",
+            get(routes::progress::get_one).put(routes::progress::upsert),
+        )
+        .route(
+            "/api/attempts",
+            get(routes::attempts::list).post(routes::attempts::create),
+        )
         .merge(SwaggerUi::new("/api/docs").url("/api/docs/openapi.json", ApiDoc::openapi()))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

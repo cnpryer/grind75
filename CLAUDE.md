@@ -18,7 +18,7 @@ cp .env.example .env
 docker compose up -d db
 cd api && cargo run
 # new shell:
-cd web && npm install && npm run dev
+cd web && bun install && bun run dev
 ```
 
 Open http://localhost:5173 → login → dashboard.

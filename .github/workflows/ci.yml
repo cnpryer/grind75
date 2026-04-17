@@ -71,21 +71,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v4
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+          bun-version: '1.2.4'
 
-      - name: npm ci
-        run: npm ci
+      - name: bun install
+        run: bun install --frozen-lockfile
 
       - name: biome + svelte-check
-        run: npm run check
+        run: bun run check
 
       - name: vitest
-        run: npm test
+        run: bun run test
 
       - name: build
-        run: npm run build
+        run: bun run build

@@ -101,7 +101,9 @@ pub fn create_router(pool: PgPool, config: Config) -> Router {
 
     let login_router = Router::new()
         .route("/api/auth/login", post(routes::auth::login))
-        .layer(GovernorLayer { config: governor_conf });
+        .layer(GovernorLayer {
+            config: governor_conf,
+        });
 
     Router::new()
         .merge(login_router)

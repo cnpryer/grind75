@@ -31,7 +31,10 @@ async fn spawn(pool: PgPool) -> TestServer {
         access_token_ttl_secs: 900,
         refresh_token_ttl_secs: 2_592_000,
     };
-    let _state = AppState { pool: pool.clone(), config: config.clone() };
+    let _state = AppState {
+        pool: pool.clone(),
+        config: config.clone(),
+    };
     let router = app::create_router(pool, config);
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
@@ -45,7 +48,10 @@ async fn spawn(pool: PgPool) -> TestServer {
         .expect("serve");
     });
 
-    TestServer { base: format!("http://{addr}"), _task: task }
+    TestServer {
+        base: format!("http://{addr}"),
+        _task: task,
+    }
 }
 
 fn client() -> reqwest::Client {
@@ -68,7 +74,10 @@ async fn login_issues_tokens_and_me_resolves(pool: PgPool) {
         .expect("login send");
     assert_eq!(login.status(), StatusCode::OK);
     let body: serde_json::Value = login.json().await.expect("login body");
-    let access = body["access_token"].as_str().expect("access_token").to_string();
+    let access = body["access_token"]
+        .as_str()
+        .expect("access_token")
+        .to_string();
     assert!(body["refresh_token"].as_str().is_some());
     assert_eq!(body["user"]["username"], "admin");
 

@@ -45,5 +45,7 @@ pub async fn create(
     _user: AuthUser,
     Json(_body): Json<CreateAttemptRequest>,
 ) -> Result<Json<AttemptRecord>, AppError> {
-    Err(AppError::NotImplemented("attempt create lands in M4".to_string()))
+    Err(AppError::NotImplemented(
+        "attempt create lands in M4".to_string(),
+    ))
 }

@@ -37,6 +37,8 @@ where
 
         let claims = jwt::decode_access(token, &config.jwt_secret)?;
 
-        Ok(AuthUser { username: claims.sub })
+        Ok(AuthUser {
+            username: claims.sub,
+        })
     }
 }

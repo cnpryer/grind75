@@ -346,19 +346,20 @@ Adapt:
 
 ## Milestones
 
-**M0 — Scaffolding + auth.** Layout above exists with stub handlers. `docker compose up` boots db + api + web; `/api/health` returns 200; `/` redirects to `/login`; a valid login → cookies set → `/` renders (placeholder). Migrations apply. `POST /api/auth/login` + `/refresh` + `AuthUser` extractor all mounted and exercised by an integration test. `npm run check` + `cargo check` green.
 
-**M1 — Pyodide worker.** `worker.ts`/`runner.ts`/`protocol.ts`/`pytest-harness.py` in place. Vitest or a throwaway dev page exercises: hardcoded two-sum starter+tests returns a structured `PytestSummary`; `while True: pass` triggers timeout termination and next run still works (respawn).
+- [x] **M0 — Scaffolding + auth.** Layout above exists with stub handlers. `docker compose up` boots db + api + web; `/api/health` returns 200; `/` redirects to `/login`; a valid login → cookies set → `/` renders (placeholder). Migrations apply. `POST /api/auth/login` + `/refresh` + `AuthUser` extractor all mounted and exercised by an integration test. `npm run check` + `cargo check` green.
 
-**M2 — Editor view.** `/problem/two-sum` renders markdown + Monaco (lazy, Python highlighted). Run wired to M1 worker. No persistence yet.
+- [ ] **M1 — Pyodide worker.** `worker.ts`/`runner.ts`/`protocol.ts`/`pytest-harness.py` in place. Vitest or a throwaway dev page exercises: hardcoded two-sum starter+tests returns a structured `PytestSummary`; `while True: pass` triggers timeout termination and next run still works (respawn).
 
-**M3 — Dashboard + navigation.** Manifest script wired to `predev`/`prebuild`. `/` lists all 13 easys grouped by pattern. All slugs navigable (placeholders for non-authored folders are OK at this stage).
+- [ ] **M2 — Editor view.** `/problem/two-sum` renders markdown + Monaco (lazy, Python highlighted). Run wired to M1 worker. No persistence yet.
 
-**M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
+- [ ] **M3 — Dashboard + navigation.** Manifest script wired to `predev`/`prebuild`. `/` lists all 13 easys grouped by pattern. All slugs navigable (placeholders for non-authored folders are OK at this stage).
 
-**M5 — Content complete.** All 13 easys authored (`problem.md`, `starter.py`, `tests.py`, `meta.json` ≥5 pytest cases each incl. obvious + edge). Smoke test: `uv run pytest problems/` iterates every slug (starters fail cleanly; canonical solutions pass). README quickstart updated.
+- [ ] **M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
 
-**M6 — In-browser lint/format (optional, post-MVP).** Wire `@astral-sh/ruff-wasm-web` in a dedicated Web Worker; surface diagnostics as Monaco markers; format-on-save action. Ruff config sourced from `[tool.ruff]` in `pyproject.toml`. See "Python tooling: uv & ruff".
+- [ ] **M5 — Content complete.** All 13 easys authored (`problem.md`, `starter.py`, `tests.py`, `meta.json` ≥5 pytest cases each incl. obvious + edge). Smoke test: `uv run pytest problems/` iterates every slug (starters fail cleanly; canonical solutions pass). README quickstart updated.
+
+- [ ] **M6 — In-browser lint/format (optional, post-MVP).** Wire `@astral-sh/ruff-wasm-web` in a dedicated Web Worker; surface diagnostics as Monaco markers; format-on-save action. Ruff config sourced from `[tool.ruff]` in `pyproject.toml`. See "Python tooling: uv & ruff".
 
 Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and-sell-stock, valid-palindrome, invert-binary-tree, valid-anagram, binary-search, flood-fill, lowest-common-ancestor-of-a-bst, balanced-binary-tree, linked-list-cycle, implement-queue-using-stacks`.
 

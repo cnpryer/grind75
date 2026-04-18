@@ -57,6 +57,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+
 	const pathname = event.url.pathname
 	if (!event.locals.user && !isPublic(pathname)) {
 		const redirectTo = pathname + event.url.search

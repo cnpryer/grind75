@@ -1,15 +1,16 @@
-FROM node:22-alpine AS builder
+FROM oven/bun:1.2.4 AS builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN bun run build
 
-FROM node:22-alpine AS runner
+FROM oven/bun:1.2.4 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app/build ./build
-COPY --from=builder /app/package.json package-lock.json* ./
-RUN npm ci --omit=dev
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/bun.lock ./
+RUN bun install --frozen-lockfile --production
 EXPOSE 3000
-CMD ["node", "build"]
+CMD ["bun", "run", "./build/index.js"]

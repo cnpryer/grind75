@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: api (rust)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # sqlx::test uses this as the template connection string and spins up
+      # a fresh per-test database. The `postgres` superuser has CREATE DATABASE.
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: 1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: '. -> target'
+
+      - name: cargo fmt --check
+        run: cargo fmt --manifest-path api/Cargo.toml --check
+
+      - name: cargo clippy
+        run: cargo clippy --locked -p api --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --locked -p api --all-targets
+
+  web:
+    name: web (sveltekit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: '1.2.4'
+
+      - name: bun install
+        run: bun install --frozen-lockfile
+
+      - name: biome + svelte-check
+        run: bun run check
+
+      - name: build
+        run: bun run build

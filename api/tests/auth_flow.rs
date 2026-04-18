@@ -25,7 +25,7 @@ async fn spawn(pool: PgPool) -> TestServer {
         jwt_secret: "test-secret-0123456789abcdef".to_string(),
         api_host: "127.0.0.1".to_string(),
         api_port: 0,
-        origin: "http://localhost:5173".to_string(),
+        web_url: "http://localhost:5173".to_string(),
         admin_username: "admin".to_string(),
         admin_password_hash: password_hash,
         access_token_ttl_secs: 900,
@@ -44,7 +44,10 @@ async fn spawn(pool: PgPool) -> TestServer {
         .expect("serve");
     });
 
-    TestServer { base: format!("http://{addr}"), _task: task }
+    TestServer {
+        base: format!("http://{addr}"),
+        _task: task,
+    }
 }
 
 fn client() -> reqwest::Client {
@@ -67,7 +70,10 @@ async fn login_issues_tokens_and_me_resolves(pool: PgPool) {
         .expect("login send");
     assert_eq!(login.status(), StatusCode::OK);
     let body: serde_json::Value = login.json().await.expect("login body");
-    let access = body["access_token"].as_str().expect("access_token").to_string();
+    let access = body["access_token"]
+        .as_str()
+        .expect("access_token")
+        .to_string();
     assert!(body["refresh_token"].as_str().is_some());
     assert_eq!(body["user"]["username"], "admin");
 

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 1,
+  "slug": "two-sum",
+  "title": "Two Sum",
+  "difficulty": "easy",
+  "pattern": "hashmap",
+  "leetcode_url": "https://leetcode.com/problems/two-sum/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["array", "hashmap"],
+  "order": 1,
+  "entry_function": "two_sum"
+}

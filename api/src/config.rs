@@ -6,7 +6,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub api_host: String,
     pub api_port: u16,
-    pub origin: String,
+    pub web_url: String,
     pub admin_username: String,
     pub admin_password_hash: String,
     pub access_token_ttl_secs: u64,
@@ -23,7 +23,9 @@ impl Config {
                 .unwrap_or_else(|_| "3001".to_string())
                 .parse()
                 .expect("API_PORT must be a valid port number"),
-            origin: env::var("ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_string()),
+            web_url: env::var("WEB_URL")
+                .or_else(|_| env::var("ORIGIN"))
+                .unwrap_or_else(|_| "http://localhost:5173".to_string()),
             admin_username: env::var("ADMIN_USERNAME").expect("ADMIN_USERNAME must be set"),
             admin_password_hash: env::var("ADMIN_PASSWORD_HASH")
                 .expect("ADMIN_PASSWORD_HASH must be set"),

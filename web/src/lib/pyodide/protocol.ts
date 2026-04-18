@@ -14,7 +14,6 @@ export type WorkerRequest =
 			tests: string
 			entryFunction: string
 	  }
-	| { type: 'reset'; requestId: string }
 
 export type InitPhase = 'loading-pyodide' | 'loading-pytest' | 'installing-harness'
 

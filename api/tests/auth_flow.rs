@@ -25,7 +25,7 @@ async fn spawn(pool: PgPool) -> TestServer {
         jwt_secret: "test-secret-0123456789abcdef".to_string(),
         api_host: "127.0.0.1".to_string(),
         api_port: 0,
-        web_url: "http://localhost:5173".to_string(),
+        origin: "http://localhost:5173".to_string(),
         admin_username: "admin".to_string(),
         admin_password_hash: password_hash,
         access_token_ttl_secs: 900,

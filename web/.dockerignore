@@ -1,0 +1,9 @@
+node_modules
+build
+.svelte-kit
+.env
+.env.*
+!.env.example
+static/pyodide
+static/problems
+src/lib/problems/generated-manifest.json

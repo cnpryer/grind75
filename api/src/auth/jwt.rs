@@ -154,16 +154,15 @@ mod tests {
 
     #[test]
     fn expired_access_token_is_token_expired() {
-        // TTL=0 is past-expiry once jwt validates with default leeway=0.
-        // Actually default validation allows some leeway; force negative.
-        // Use a token that's already expired.
+        // jsonwebtoken's Validation::default() applies a 60s leeway, so `exp`
+        // must be further in the past than that for the token to be rejected.
         let now = Utc::now().timestamp();
         let claims = Claims {
             sub: "me".to_string(),
             jti: Uuid::new_v4(),
             typ: TokenKind::Access,
-            exp: now - 60,
-            iat: now - 120,
+            exp: now - 3600,
+            iat: now - 7200,
         };
         let token = encode(
             &Header::default(),
@@ -184,8 +183,8 @@ mod tests {
             sub: "me".to_string(),
             jti: Uuid::new_v4(),
             typ: TokenKind::Refresh,
-            exp: now - 60,
-            iat: now - 120,
+            exp: now - 3600,
+            iat: now - 7200,
         };
         let token = encode(
             &Header::default(),

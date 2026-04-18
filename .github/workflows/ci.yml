@@ -54,10 +54,10 @@ jobs:
         run: cargo fmt --manifest-path api/Cargo.toml --check
 
       - name: cargo clippy
-        run: cargo clippy -p api --all-targets -- -D warnings
+        run: cargo clippy --locked -p api --all-targets -- -D warnings
 
       - name: cargo test
-        run: cargo test -p api --all-targets
+        run: cargo test --locked -p api --all-targets
 
   web:
     name: web (sveltekit)

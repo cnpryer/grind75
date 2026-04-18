@@ -1,6 +1,5 @@
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
-use sqlx::PgPool;
 
 use crate::auth::jwt;
 use crate::config::Config;
@@ -16,7 +15,6 @@ pub struct AuthUser {
 
 impl<S> FromRequestParts<S> for AuthUser
 where
-    PgPool: FromRef<S>,
     Config: FromRef<S>,
     S: Send + Sync,
 {

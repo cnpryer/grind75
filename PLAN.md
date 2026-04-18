@@ -310,6 +310,28 @@ Mirror `/Users/chrispryer/github/pryerdisposal.com/web/src/lib/api/client.ts` ve
 - Browser never sees tokens (httpOnly cookies) and never calls the Rust API directly. All mutations go through same-origin `/api/*/+server.ts` endpoints that forward with the Bearer header.
 - Logout (`POST /api/auth/logout`) clears both cookies **and** calls the Rust API to revoke the current refresh token's `jti` (sets `revoked_at=NOW()` on its row). Access tokens ride out their ≤15min expiry — acceptable given the TTL floor.
 
+## Type synchronization via OpenAPI
+
+The Rust API is the single source of truth for request/response shapes. `utoipa` annotations on DTOs + route handlers produce an OpenAPI 3 spec, which is served at `/api/docs/openapi.json` (SwaggerUi mounted in `app.rs`). The web side consumes generated TypeScript types from that spec so `ApiClient` signatures and `+*.server.ts` load functions can't drift from the backend.
+
+**Pipeline (all web-side — no api crate changes needed)**:
+- `openapi-typescript` (web devDependency) reads the spec and emits `web/src/lib/api/generated.ts`.
+- Regeneration is manual: `npm run api:types`, which does `openapi-typescript "$API_URL/api/docs/openapi.json" -o src/lib/api/generated.ts`. Run it after adding/changing a route handler or DTO.
+- **Not** wired into `predev`/`prebuild`: that would force the API to be running for every web build (including CI and offline type-checks). Explicit regeneration is the lesser evil for a repo with a small, stable API surface.
+- Alongside the generated TS, a snapshot `web/src/lib/api/openapi.json` is committed so diffs show API shape changes explicitly in PR review. Both files are committed (not gitignored): IDE autocomplete works without cargo, and `svelte-check` / `tsc` run without a live API.
+
+**Usage in `ApiClient`**: types are imported from `./generated`, e.g.
+```ts
+import type { components } from './generated'
+type LoginRequest = components['schemas']['LoginRequest']
+type AuthResponse  = components['schemas']['AuthResponse']
+```
+Error payloads reuse `ErrorBody` (typed-code + message) from the Rust side via `components['schemas']['ErrorBody']` — matches `AuthErrorCode` enum on the server.
+
+**Interim (until generated types exist)**: a small number of DTOs (login/refresh/logout/me) are hand-typed in `lib/api/errors.ts` and `lib/api/client.ts` for M0. When M4 adds progress + attempts endpoints, switch those over to the generated types and backport the auth types too.
+
+**When to wire this in**: scheduled for late in M0 or as the first piece of M4, whichever comes first — i.e., before the second wave of DTOs land. Hand-typing the 4 auth endpoints is quicker than standing up the pipeline if it's only those 4; the pipeline pays off starting at ~6–8 endpoints.
+
 ## Tooling config
 
 Copy as-is: `web/biome.json`, `web/tsconfig.json`, `web/postcss.config.js`, `web/.browserslistrc`, `web/.npmrc`, `web/.dockerignore`, `api/.cargo/`, `api/rust-toolchain.toml`, `api/Dockerfile`, `api/.dockerignore`.

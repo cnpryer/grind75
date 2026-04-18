@@ -349,7 +349,7 @@ Adapt:
 
 - [x] **M0 — Scaffolding + auth.** Layout above exists with stub handlers. `docker compose up` boots db + api + web; `/api/health` returns 200; `/` redirects to `/login`; a valid login → cookies set → `/` renders (placeholder). Migrations apply. `POST /api/auth/login` + `/refresh` + `AuthUser` extractor all mounted and exercised by an integration test. `npm run check` + `cargo check` green.
 
-- [ ] **M1 — Pyodide worker.** `worker.ts`/`runner.ts`/`protocol.ts`/`pytest-harness.py` in place. Vitest or a throwaway dev page exercises: hardcoded two-sum starter+tests returns a structured `PytestSummary`; `while True: pass` triggers timeout termination and next run still works (respawn).
+- [x] **M1 — Pyodide worker.** `worker.ts`/`runner.ts`/`protocol.ts`/`pytest-harness.py` in place. Vitest or a throwaway dev page exercises: hardcoded two-sum starter+tests returns a structured `PytestSummary`; `while True: pass` triggers timeout termination and next run still works (respawn).
 
 - [ ] **M2 — Editor view.** `/problem/two-sum` renders markdown + Monaco (lazy, Python highlighted). Run wired to M1 worker. No persistence yet.
 

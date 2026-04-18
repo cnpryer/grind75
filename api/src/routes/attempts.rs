@@ -41,11 +41,12 @@ pub async fn list(
     request_body = CreateAttemptRequest,
     responses((status = 201, body = AttemptRecord), (status = 401), (status = 501))
 )]
+
+// TODO: return `(StatusCode::CREATED, Json<AttemptRecord>)` so the actual HTTP status
+// matches the 201 declared in the OpenAPI annotation above.
 pub async fn create(
     _user: AuthUser,
     Json(_body): Json<CreateAttemptRequest>,
 ) -> Result<Json<AttemptRecord>, AppError> {
-    Err(AppError::NotImplemented(
-        "attempt create lands in M4".to_string(),
-    ))
+    Err(AppError::NotImplemented("attempt create lands in M4".to_string()))
 }

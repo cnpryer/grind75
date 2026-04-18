@@ -1,13 +1,13 @@
 //! M0 auth integration test: login → refresh rotation → replay → credentials_invalid.
 //!
 //! Runs against a real Postgres via `sqlx::test`, which spins up a per-test
-//! database and applies `../migrations`. Run with `cargo test -p api`.
+//! database and applies `./migrations`. Run with `cargo test -p api`.
 //! Requires `DATABASE_URL` pointing at a live Postgres (see `docker-compose.yml`).
 
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use api::{AppState, app, config::Config};
+use api::{app, config::Config};
 use reqwest::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
@@ -31,10 +31,6 @@ async fn spawn(pool: PgPool) -> TestServer {
         access_token_ttl_secs: 900,
         refresh_token_ttl_secs: 2_592_000,
     };
-    let _state = AppState {
-        pool: pool.clone(),
-        config: config.clone(),
-    };
     let router = app::create_router(pool, config);
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
@@ -48,10 +44,7 @@ async fn spawn(pool: PgPool) -> TestServer {
         .expect("serve");
     });
 
-    TestServer {
-        base: format!("http://{addr}"),
-        _task: task,
-    }
+    TestServer { base: format!("http://{addr}"), _task: task }
 }
 
 fn client() -> reqwest::Client {
@@ -74,10 +67,7 @@ async fn login_issues_tokens_and_me_resolves(pool: PgPool) {
         .expect("login send");
     assert_eq!(login.status(), StatusCode::OK);
     let body: serde_json::Value = login.json().await.expect("login body");
-    let access = body["access_token"]
-        .as_str()
-        .expect("access_token")
-        .to_string();
+    let access = body["access_token"].as_str().expect("access_token").to_string();
     assert!(body["refresh_token"].as_str().is_some());
     assert_eq!(body["user"]["username"], "admin");
 
@@ -161,7 +151,7 @@ async fn refresh_rotates_and_replay_revokes(pool: PgPool) {
     // 2. Use the refresh token — get a fresh pair.
     let rotated: serde_json::Value = client
         .post(format!("{}/api/auth/refresh", server.base))
-        .json(&json!({"refresh_token": original_refresh}))
+        .json(&json!({"refresh_token": &original_refresh}))
         .send()
         .await
         .expect("refresh")
@@ -224,7 +214,7 @@ async fn logout_revokes_refresh_token(pool: PgPool) {
     let logout = client
         .post(format!("{}/api/auth/logout", server.base))
         .bearer_auth(&access)
-        .json(&json!({"refresh_token": refresh}))
+        .json(&json!({"refresh_token": &refresh}))
         .send()
         .await
         .expect("logout");

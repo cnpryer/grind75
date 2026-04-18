@@ -27,10 +27,7 @@ pub async fn list(_user: AuthUser) -> Json<Vec<ProgressRecord>> {
     params(("slug" = String, Path, description = "Problem slug")),
     responses((status = 200, body = ProgressRecord), (status = 404), (status = 401))
 )]
-pub async fn get_one(
-    _user: AuthUser,
-    Path(slug): Path<String>,
-) -> Result<Json<ProgressRecord>, AppError> {
+pub async fn get_one(_user: AuthUser, Path(slug): Path<String>) -> Result<Json<ProgressRecord>, AppError> {
     Err(AppError::NotFound(format!("No progress for slug '{slug}'")))
 }
 
@@ -48,9 +45,7 @@ pub async fn upsert(
     Path(_slug): Path<String>,
     Json(_body): Json<UpsertProgressRequest>,
 ) -> Result<Json<ProgressRecord>, AppError> {
-    Err(AppError::NotImplemented(
-        "progress upsert lands in M4".to_string(),
-    ))
+    Err(AppError::NotImplemented("progress upsert lands in M4".to_string()))
 }
 
 #[utoipa::path(
@@ -60,8 +55,9 @@ pub async fn upsert(
     security(("bearer_auth" = [])),
     responses((status = 204), (status = 401), (status = 501))
 )]
+// NOTE: axum serializes `Ok(())` as HTTP 200, but the OpenAPI contract above declares
+// 204 No Content. Once this stub is replaced in M4, return `StatusCode::NO_CONTENT`
+// (i.e. `Result<StatusCode, AppError>`) so the behavior matches the documented contract.
 pub async fn reset(_user: AuthUser) -> Result<(), AppError> {
-    Err(AppError::NotImplemented(
-        "progress reset lands in M4".to_string(),
-    ))
+    Err(AppError::NotImplemented("progress reset lands in M4".to_string()))
 }

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 2,
+  "slug": "valid-parentheses",
+  "title": "Valid Parentheses",
+  "difficulty": "easy",
+  "pattern": "stack",
+  "leetcode_url": "https://leetcode.com/problems/valid-parentheses/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["stack", "string"],
+  "order": 2,
+  "entry_function": "valid_parentheses"
+}

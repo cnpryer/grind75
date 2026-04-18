@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 11,
+  "slug": "balanced-binary-tree",
+  "title": "Balanced Binary Tree",
+  "difficulty": "easy",
+  "pattern": "tree",
+  "leetcode_url": "https://leetcode.com/problems/balanced-binary-tree/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["tree", "dfs"],
+  "order": 11,
+  "entry_function": "is_balanced"
+}

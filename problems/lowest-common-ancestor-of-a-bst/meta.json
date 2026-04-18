@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 10,
+  "slug": "lowest-common-ancestor-of-a-bst",
+  "title": "Lowest Common Ancestor of a BST",
+  "difficulty": "easy",
+  "pattern": "tree",
+  "leetcode_url": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["tree", "binary-search-tree"],
+  "order": 10,
+  "entry_function": "lowest_common_ancestor"
+}

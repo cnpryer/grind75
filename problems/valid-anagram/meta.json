@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 7,
+  "slug": "valid-anagram",
+  "title": "Valid Anagram",
+  "difficulty": "easy",
+  "pattern": "hashmap",
+  "leetcode_url": "https://leetcode.com/problems/valid-anagram/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["hashmap", "string"],
+  "order": 7,
+  "entry_function": "is_anagram"
+}

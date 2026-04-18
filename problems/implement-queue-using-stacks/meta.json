@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 13,
+  "slug": "implement-queue-using-stacks",
+  "title": "Implement Queue using Stacks",
+  "difficulty": "easy",
+  "pattern": "stack",
+  "leetcode_url": "https://leetcode.com/problems/implement-queue-using-stacks/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["stack", "design"],
+  "order": 13,
+  "entry_function": "MyQueue"
+}

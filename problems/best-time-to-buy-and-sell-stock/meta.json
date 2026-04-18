@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 4,
+  "slug": "best-time-to-buy-and-sell-stock",
+  "title": "Best Time to Buy and Sell Stock",
+  "difficulty": "easy",
+  "pattern": "array",
+  "leetcode_url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["array", "greedy"],
+  "order": 4,
+  "entry_function": "max_profit"
+}

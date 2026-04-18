@@ -353,7 +353,7 @@ Adapt:
 
 - [x] **M2 — Editor view.** `/problem/two-sum` renders markdown + Monaco (lazy, Python highlighted). Run wired to M1 worker. No persistence yet.
 
-- [ ] **M3 — Dashboard + navigation.** Manifest script wired to `predev`/`prebuild`. `/` lists all 13 easys grouped by pattern. All slugs navigable (placeholders for non-authored folders are OK at this stage).
+- [x] **M3 — Dashboard + navigation.** Manifest script wired to `predev`/`prebuild`. `/` lists all 13 easys grouped by pattern. All slugs navigable (placeholders for non-authored folders are OK at this stage).
 
 - [ ] **M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
 

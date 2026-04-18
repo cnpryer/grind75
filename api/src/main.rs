@@ -27,8 +27,12 @@ async fn main() {
     let router = app::create_router(pool, config);
 
     tracing::info!("grind75 API listening on {addr}");
-    tracing::info!("Swagger UI at http://{addr}/api/docs");
+    tracing::info!("Swagger UI at http://{addr}/api/docs/");
 
     let listener = TcpListener::bind(addr).await.expect("Failed to bind");
-    axum::serve(listener, router).await.expect("Server error");
+    // ConnectInfo<SocketAddr> is required by the login/refresh handlers
+    // (for audit logging) and by tower_governor's PeerIpKeyExtractor.
+    axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .expect("Server error");
 }

@@ -8,6 +8,8 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
+		"predev": "node ../scripts/stage-pyodide.mjs",
+		"prebuild": "node ../scripts/stage-pyodide.mjs",
 		"check": "biome check . && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:fix": "biome check --fix .",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

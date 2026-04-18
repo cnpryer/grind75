@@ -82,5 +82,8 @@ jobs:
       - name: biome + svelte-check
         run: bun run check
 
+      - name: vitest
+        run: bun run test
+
       - name: build
         run: bun run build

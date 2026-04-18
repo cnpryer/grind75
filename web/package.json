@@ -11,7 +11,7 @@
 		"check": "biome check . && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:fix": "biome check --fix .",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"test": "vitest run --passWithNoTests",
+		"test": "vitest run",
 		"test:watch": "vitest",
 		"lint": "biome lint .",
 		"lint:fix": "biome lint --write .",

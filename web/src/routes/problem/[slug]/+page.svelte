@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onDestroy } from 'svelte'
+import { onDestroy, untrack } from 'svelte'
 import { beforeNavigate } from '$app/navigation'
 import type { ProgressRecord, ProgressStatus } from '$lib/api/client'
 import MonacoEditor from '$lib/monaco/MonacoEditor.svelte'
@@ -25,7 +25,7 @@ let lastSavedNotes = $state('')
 
 // When the user navigates to a different slug, SvelteKit reuses this component
 // and updates `data` in place. Snap the editor back to the new starter.
-let lastSlug = ''
+let lastSlug = untrack(() => data.problem.meta.slug)
 function hydrateFromData() {
   const progress = data.progress
   code = progress?.last_code ?? data.problem.starter
@@ -35,6 +35,9 @@ function hydrateFromData() {
   lastSavedCode = code
   lastSavedNotes = notes
 }
+
+// Initialize synchronously so the editor sees the correct value on first render.
+hydrateFromData()
 
 $effect(() => {
   if (meta.slug !== lastSlug) {
@@ -119,13 +122,14 @@ function resetToStarter() {
 }
 
 const hasUnsavedCode = $derived(code !== lastSavedCode)
+const hasUnsavedNotes = $derived(notes !== lastSavedNotes)
 
 beforeNavigate((navigation) => {
-  if (!hasUnsavedCode) {
+  if (!hasUnsavedCode && !hasUnsavedNotes && notesState !== 'saving') {
     return
   }
 
-  const ok = window.confirm('You have unsaved code changes. Leave without saving?')
+  const ok = window.confirm('You have unsaved changes. Leave without saving?')
   if (!ok) {
     navigation.cancel()
   }
@@ -196,6 +200,11 @@ async function saveNotes(nextNotes: string) {
 $effect(() => {
   const currentNotes = notes
   if (currentNotes === lastSavedNotes) {
+    if (notesSaveTimer) {
+      clearTimeout(notesSaveTimer)
+      notesSaveTimer = null
+    }
+    notesState = 'idle'
     return
   }
 

@@ -76,6 +76,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const pathname = event.url.pathname
 	if (!event.locals.user && !isPublic(pathname)) {
+		if (pathname.startsWith('/api/')) {
+			return new Response(
+				JSON.stringify({ error: 'unauthorized', message: 'Authentication required' }),
+				{
+					status: 401,
+					headers: { 'Content-Type': 'application/json' },
+				},
+			)
+		}
 		const redirectTo = pathname + event.url.search
 		throw redirect(303, `/login?redirect=${encodeURIComponent(redirectTo)}`)
 	}

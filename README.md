@@ -32,7 +32,7 @@ docker compose up -d db
 cargo run -p api
 
 # 4. In a second shell, run the web dev server
-cd web && npm install && npm run dev
+cd web && bun install && bun run dev
 ```
 
 Open <http://localhost:5173> → sign in with `ADMIN_USERNAME` + the password you hashed → dashboard.
@@ -69,9 +69,9 @@ cargo test -p api                         # requires DATABASE_URL set
 
 # Web — lint, typecheck, unit test, build
 cd web
-npm run check                             # biome + svelte-check
-npm test                                  # vitest
-npm run build
+bun run check                             # biome + svelte-check
+bun run test                              # vitest
+bun run build
 ```
 
 CI (see `.github/workflows/ci.yml`) runs all of the above on every push to `main` and every pull request.
@@ -82,7 +82,7 @@ The Rust API is the source of truth for DTO shapes via `utoipa`. TypeScript type
 
 ```sh
 # with the API running locally on :3001
-cd web && npm run api:types
+cd web && bun run api:types
 ```
 
 Commits `web/src/lib/api/generated.ts` and `web/src/lib/api/openapi.json` alongside the code change. See [PLAN.md § Type synchronization via OpenAPI](./PLAN.md).

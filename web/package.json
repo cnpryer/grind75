@@ -19,6 +19,9 @@
 		"format:check": "biome format .",
 		"api:types": "openapi-typescript \"${API_URL:-http://localhost:3001}/api/docs/openapi.json\" -o src/lib/api/generated.ts"
 	},
+	"engines": {
+		"node": ">=22"
+	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.3.14",
 		"@sveltejs/adapter-node": "^5.5.2",

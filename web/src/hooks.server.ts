@@ -13,7 +13,7 @@ import { decodeJwtPayload, isExpired } from '$lib/api/jwt'
 const API_URL = env.API_URL || 'http://127.0.0.1:3001'
 
 /** Paths that never require auth. */
-const PUBLIC_PATHS = new Set(['/login', '/api/health'])
+const PUBLIC_PATHS = new Set(['/login', '/api/health', '/api/auth/logout'])
 
 function isPublic(pathname: string) {
 	if (PUBLIC_PATHS.has(pathname)) return true
@@ -32,28 +32,45 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	if (accessToken) {
 		const payload = decodeJwtPayload(accessToken)
-		if (payload && payload.typ === 'access' && !isExpired(payload)) {
-			event.locals.user = { username: payload.sub }
-			event.locals.accessToken = accessToken
-		} else if (refreshToken) {
-			// Access token expired/malformed — try a refresh.
+		const canAttemptAccessValidation = payload && payload.typ === 'access' && !isExpired(payload)
+
+		if (canAttemptAccessValidation) {
 			try {
-				const api = new ApiClient(API_URL)
-				const tokens = await api.refresh({ refresh_token: refreshToken })
-				event.cookies.set(ACCESS_TOKEN_COOKIE, tokens.access_token, {
-					...cookieOpts(accessTtlSecs(env)),
+				const meResponse = await event.fetch(`${API_URL}/api/auth/me`, {
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+					},
 				})
-				event.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refresh_token, {
-					...cookieOpts(refreshTtlSecs(env)),
-				})
-				event.locals.user = tokens.user
-				event.locals.accessToken = tokens.access_token
+
+				if (meResponse.ok) {
+					event.locals.user = await meResponse.json()
+					event.locals.accessToken = accessToken
+				}
 			} catch {
-				// Refresh failed — token dead or API unreachable. Clear cookies so
-				// the next cycle shows /login cleanly.
-				event.cookies.delete(ACCESS_TOKEN_COOKIE, { path: '/' })
-				event.cookies.delete(REFRESH_TOKEN_COOKIE, { path: '/' })
+				// Treat validation failures as unauthenticated and fall through to
+				// refresh handling below if a refresh token is present.
 			}
+		}
+	}
+
+	if (!event.locals.user && refreshToken) {
+		// No valid access token (missing/expired/unverifiable) — try a refresh.
+		try {
+			const api = new ApiClient(API_URL)
+			const tokens = await api.refresh({ refresh_token: refreshToken })
+			event.cookies.set(ACCESS_TOKEN_COOKIE, tokens.access_token, {
+				...cookieOpts(accessTtlSecs(env)),
+			})
+			event.cookies.set(REFRESH_TOKEN_COOKIE, tokens.refresh_token, {
+				...cookieOpts(refreshTtlSecs(env)),
+			})
+			event.locals.user = tokens.user
+			event.locals.accessToken = tokens.access_token
+		} catch {
+			// Refresh failed — token dead or API unreachable. Clear cookies so
+			// the next cycle shows /login cleanly.
+			event.cookies.delete(ACCESS_TOKEN_COOKIE, { path: '/' })
+			event.cookies.delete(REFRESH_TOKEN_COOKIE, { path: '/' })
 		}
 	}
 

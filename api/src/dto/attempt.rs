@@ -11,7 +11,7 @@ pub struct CreateAttemptRequest {
     pub pytest_summary: serde_json::Value,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
 pub struct AttemptRecord {
     pub id: Uuid,
     pub slug: String,

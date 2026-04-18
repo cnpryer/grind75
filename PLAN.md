@@ -355,7 +355,7 @@ Adapt:
 
 - [x] **M3 — Dashboard + navigation.** Manifest script wired to `predev`/`prebuild`. `/` lists all 13 easys grouped by pattern. All slugs navigable (placeholders for non-authored folders are OK at this stage). All 13 easys authored (`problem.md`, `starter.py`, `tests.py`, `meta.json`) checked in and viewable.
 
-- [ ] **M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
+- [x] **M4 — Persistence.** Migrations + handlers + `ApiClient` wired. Submit on Two Sum persists; reload restores code/notes/status/attempt count. Notes autosave debounced 500ms.
 
 - [ ] **M5 — Testing.** ≥5 pytest cases each incl. obvious + edge). Smoke test: `uv run pytest problems/` iterates every slug (starters fail cleanly; canonical solutions pass). README quickstart updated.
 

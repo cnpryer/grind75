@@ -181,11 +181,18 @@ pub async fn refresh(
     .execute(&mut *tx)
     .await?;
 
-    sqlx::query("UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by = $1 WHERE jti = $2")
-        .bind(new_jti)
-        .bind(jti)
-        .execute(&mut *tx)
-        .await?;
+    let revoke_result = sqlx::query(
+        "UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by = $1 \
+         WHERE jti = $2 AND revoked_at IS NULL",
+    )
+    .bind(new_jti)
+    .bind(jti)
+    .execute(&mut *tx)
+    .await?;
+
+    if revoke_result.rows_affected() != 1 {
+        return Err(AppError::Auth(AuthErrorCode::RefreshInvalid));
+    }
 
     tx.commit().await?;
 

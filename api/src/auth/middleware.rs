@@ -1,6 +1,5 @@
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
-use sqlx::PgPool;
 
 use crate::auth::jwt;
 use crate::config::Config;
@@ -16,7 +15,6 @@ pub struct AuthUser {
 
 impl<S> FromRequestParts<S> for AuthUser
 where
-    PgPool: FromRef<S>,
     Config: FromRef<S>,
     S: Send + Sync,
 {
@@ -31,9 +29,19 @@ where
             .and_then(|v| v.to_str().ok())
             .ok_or(AppError::Auth(AuthErrorCode::TokenMissing))?;
 
-        let token = header
-            .strip_prefix("Bearer ")
+        // RFC 6750: auth-scheme is case-insensitive; accept any whitespace between
+        // scheme and token; reject if there are extra tokens after the credential.
+        let mut auth_parts = header.split_whitespace();
+        let scheme = auth_parts
+            .next()
             .ok_or(AppError::Auth(AuthErrorCode::TokenInvalid))?;
+        let token = auth_parts
+            .next()
+            .ok_or(AppError::Auth(AuthErrorCode::TokenInvalid))?;
+
+        if !scheme.eq_ignore_ascii_case("Bearer") || auth_parts.next().is_some() {
+            return Err(AppError::Auth(AuthErrorCode::TokenInvalid));
+        }
 
         let claims = jwt::decode_access(token, &config.jwt_secret)?;
 

@@ -59,6 +59,28 @@ jobs:
       - name: cargo test
         run: cargo test --locked -p api --all-targets
 
+  problems:
+    name: problems (python)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.9.5'
+
+      - name: uv sync
+        run: uv sync --locked
+
+      - name: ruff
+        run: uv run ruff check problems/
+
+      - name: pytest (canonical solutions)
+        run: uv run pytest problems/
+
   web:
     name: web (sveltekit)
     runs-on: ubuntu-latest

@@ -1,2 +1,8 @@
-def has_cycle(*args, **kwargs):
-    raise NotImplementedError("Placeholder starter for M3; full starter lands in M5.")
+class ListNode:
+    def __init__(self, val: int = 0, next: "ListNode | None" = None):
+        self.val = val
+        self.next = next
+
+
+def has_cycle(head: "ListNode | None") -> bool:
+    raise NotImplementedError

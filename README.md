@@ -72,7 +72,23 @@ cd web
 bun run check                             # biome + svelte-check
 bun run test                              # vitest
 bun run build
+
+# Problems — canonical-solution smoke test
+uv sync
+uv run pytest problems/                   # every slug's tests against its solution.py
+uv run ruff check problems/
 ```
+
+Each `problems/<slug>/` ships `starter.py` (what the user sees in the editor),
+`solution.py` (the canonical reference — host-only, not copied into the web
+bundle), and `tests.py`. `problems/conftest.py` + `--import-mode=importlib`
+in `pyproject.toml` isolate the repeated `solution` module name across slugs
+when pytest walks the whole `problems/` tree in a single session.
+
+To sanity-check that a starter still raises cleanly against its tests
+(without hand-editing), temporarily copy `starter.py` over `solution.py` and
+rerun `uv run pytest problems/<slug>/`. Every test should fail with
+`NotImplementedError`.
 
 CI (see `.github/workflows/ci.yml`) runs all of the above on every push to `main` and every pull request.
 

@@ -23,13 +23,21 @@ pub struct Claims {
 
 /// Issue an access token for `username` with a fresh `jti` and the configured TTL.
 /// The jti isn't tracked server-side for access tokens — the ≤15 min expiry is the sole guard.
-pub fn issue_access(username: &str, secret: &str, ttl_secs: u64) -> Result<(String, Uuid), AppError> {
+pub fn issue_access(
+    username: &str,
+    secret: &str,
+    ttl_secs: u64,
+) -> Result<(String, Uuid), AppError> {
     issue(username, secret, ttl_secs, TokenKind::Access)
 }
 
 /// Issue a refresh token. The caller is responsible for persisting its `jti`
 /// into the `refresh_tokens` table (handled in the login/refresh handlers).
-pub fn issue_refresh(username: &str, secret: &str, ttl_secs: u64) -> Result<(String, Uuid), AppError> {
+pub fn issue_refresh(
+    username: &str,
+    secret: &str,
+    ttl_secs: u64,
+) -> Result<(String, Uuid), AppError> {
     issue(username, secret, ttl_secs, TokenKind::Refresh)
 }
 

@@ -27,7 +27,7 @@ async fn main() {
     let router = app::create_router(pool, config);
 
     tracing::info!("grind75 API listening on {addr}");
-    tracing::info!("Swagger UI at http://{addr}/api/docs/");
+    tracing::info!("Swagger UI at http://{addr}/api/docs");
 
     let listener = TcpListener::bind(addr).await.expect("Failed to bind");
     axum::serve(listener, router).await.expect("Server error");

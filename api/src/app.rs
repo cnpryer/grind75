@@ -42,7 +42,7 @@ impl utoipa::Modify for SecurityAddon {
 
 pub fn create_router(pool: PgPool, config: Config) -> Router {
     let allowed_origin = config
-        .web_url
+        .origin
         .parse::<HeaderValue>()
         .unwrap_or_else(|_| HeaderValue::from_static("http://localhost:5173"));
 

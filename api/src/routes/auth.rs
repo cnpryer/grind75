@@ -59,8 +59,7 @@ pub async fn login(
     let meta = request_meta(&headers, Some(addr));
 
     let username_matches = req.username == state.config.admin_username;
-    let password_valid =
-        password::verify_password(&req.password, &state.config.admin_password_hash)?;
+    let password_valid = password::verify_password(&req.password, &state.config.admin_password_hash)?;
 
     if !username_matches || !password_valid {
         tracing::warn!(
@@ -182,18 +181,27 @@ pub async fn refresh(
     .execute(&mut *tx)
     .await?;
 
-    sqlx::query("UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by = $1 WHERE jti = $2")
-        .bind(new_jti)
-        .bind(jti)
-        .execute(&mut *tx)
-        .await?;
+    let revoke_result = sqlx::query(
+        "UPDATE refresh_tokens SET revoked_at = NOW(), replaced_by = $1 \
+         WHERE jti = $2 AND revoked_at IS NULL",
+    )
+    .bind(new_jti)
+    .bind(jti)
+    .execute(&mut *tx)
+    .await?;
+
+    if revoke_result.rows_affected() != 1 {
+        return Err(AppError::Auth(AuthErrorCode::RefreshInvalid));
+    }
 
     tx.commit().await?;
 
     // Lazy cleanup of long-expired rows (see PLAN.md — no cron).
-    let _ = sqlx::query("DELETE FROM refresh_tokens WHERE expires_at < NOW() - INTERVAL '7 days'")
-        .execute(&state.pool)
-        .await;
+    let _ = sqlx::query(
+        "DELETE FROM refresh_tokens WHERE expires_at < NOW() - INTERVAL '7 days'",
+    )
+    .execute(&state.pool)
+    .await;
 
     tracing::info!(
         username = %row.username,
@@ -205,9 +213,7 @@ pub async fn refresh(
     Ok(Json(AuthResponse {
         access_token,
         refresh_token,
-        user: UserProfile {
-            username: row.username,
-        },
+        user: UserProfile { username: row.username },
     }))
 }
 
@@ -260,9 +266,7 @@ pub async fn logout(
     tag = "auth"
 )]
 pub async fn me(auth_user: AuthUser) -> Json<UserProfile> {
-    Json(UserProfile {
-        username: auth_user.username,
-    })
+    Json(UserProfile { username: auth_user.username })
 }
 
 async fn issue_pair(
@@ -293,9 +297,7 @@ async fn issue_pair(
     Ok(AuthResponse {
         access_token,
         refresh_token,
-        user: UserProfile {
-            username: username.to_string(),
-        },
+        user: UserProfile { username: username.to_string() },
     })
 }
 

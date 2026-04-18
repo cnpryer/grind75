@@ -87,23 +87,24 @@ pub fn create_router(pool: PgPool, config: Config) -> Router {
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
         .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
-    // 5 attempts/min/IP on /api/auth/login — token-bucket refill 1 / 12s, burst 5.
+    // 5 attempts/min/IP on /api/auth/login.
+    // tower_governor's per_second(n) sets the *replenishment interval* to n seconds
+    // (i.e. 1 token per 12 s → 5 tokens/min), NOT "n tokens/second".
+    // burst_size(5) allows up to 5 queued tokens before blocking.
     // tower_governor's default PeerIpKeyExtractor requires ConnectInfo, wired in main.rs.
     // The default error response is a plain 429 — we accept that for M0 (follow-up:
     // custom error handler that emits `{"error": "rate_limited", ...}`).
     let governor_conf = Arc::new(
         GovernorConfigBuilder::default()
-            .per_second(12)
-            .burst_size(5)
+            .const_per_second(12)
+            .const_burst_size(5)
             .finish()
             .expect("governor config"),
     );
 
     let login_router = Router::new()
         .route("/api/auth/login", post(routes::auth::login))
-        .layer(GovernorLayer {
-            config: governor_conf,
-        });
+        .layer(GovernorLayer { config: governor_conf });
 
     Router::new()
         .merge(login_router)

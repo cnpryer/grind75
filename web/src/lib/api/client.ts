@@ -29,6 +29,47 @@ export interface LogoutRequest {
 	refresh_token: string
 }
 
+export type ProgressStatus = 'not_started' | 'attempted' | 'solved'
+
+export interface ProgressRecord {
+	slug: string
+	status: ProgressStatus
+	last_code: string | null
+	notes: string | null
+	attempt_count: number
+	solved_at: string | null
+	updated_at: string
+}
+
+export interface UpsertProgressRequest {
+	status?: ProgressStatus
+	last_code?: string
+	notes?: string
+}
+
+export interface AttemptRecord {
+	id: string
+	slug: string
+	code: string
+	passed: boolean
+	duration_ms: number
+	pytest_summary: unknown
+	created_at: string
+}
+
+export interface CreateAttemptRequest {
+	slug: string
+	code: string
+	passed: boolean
+	duration_ms: number
+	pytest_summary: unknown
+}
+
+export interface ListAttemptsParams {
+	slug?: string
+	limit?: number
+}
+
 /**
  * Minimal typed HTTP client for the Rust API. Constructed server-side only
  * (inside `+*.server.ts` / `+server.ts`) with the access token read from
@@ -87,5 +128,35 @@ export class ApiClient {
 
 	health() {
 		return this.request<{ status: string }>('GET', '/api/health')
+	}
+
+	// --- Progress ---
+	listProgress() {
+		return this.request<ProgressRecord[]>('GET', '/api/progress')
+	}
+
+	getProgress(slug: string) {
+		return this.request<ProgressRecord>('GET', `/api/progress/${encodeURIComponent(slug)}`)
+	}
+
+	upsertProgress(slug: string, data: UpsertProgressRequest) {
+		return this.request<ProgressRecord>('PUT', `/api/progress/${encodeURIComponent(slug)}`, data)
+	}
+
+	resetProgress() {
+		return this.request<void>('DELETE', '/api/progress')
+	}
+
+	// --- Attempts ---
+	listAttempts(params: ListAttemptsParams = {}) {
+		const query = new URLSearchParams()
+		if (params.slug) query.set('slug', params.slug)
+		if (params.limit !== undefined) query.set('limit', String(params.limit))
+		const suffix = query.size > 0 ? `?${query.toString()}` : ''
+		return this.request<AttemptRecord[]>('GET', `/api/attempts${suffix}`)
+	}
+
+	createAttempt(data: CreateAttemptRequest) {
+		return this.request<AttemptRecord>('POST', '/api/attempts', data)
 	}
 }

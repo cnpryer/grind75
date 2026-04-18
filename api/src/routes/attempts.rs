@@ -1,10 +1,9 @@
-//! Stub handlers for M0 — all gated by `AuthUser`. M4 replaces the stubs with
-//! a transactional insert (attempt + progress upsert) against Postgres.
-
 use axum::Json;
-use axum::extract::Query;
+use axum::extract::{Query, State};
+use axum::http::StatusCode;
 use serde::Deserialize;
 
+use crate::AppState;
 use crate::auth::middleware::AuthUser;
 use crate::dto::attempt::{AttemptRecord, CreateAttemptRequest};
 use crate::error::AppError;
@@ -28,9 +27,23 @@ pub struct ListAttemptsQuery {
 )]
 pub async fn list(
     _user: AuthUser,
-    Query(_q): Query<ListAttemptsQuery>,
-) -> Json<Vec<AttemptRecord>> {
-    Json(Vec::new())
+    State(state): State<AppState>,
+    Query(q): Query<ListAttemptsQuery>,
+) -> Result<Json<Vec<AttemptRecord>>, AppError> {
+    let limit = q.limit.unwrap_or(50).clamp(1, 200) as i64;
+    let rows = sqlx::query_as::<_, AttemptRecord>(
+        "SELECT id, slug, code, passed, duration_ms, pytest_summary, created_at
+         FROM attempts
+         WHERE ($1::text IS NULL OR slug = $1)
+         ORDER BY created_at DESC
+         LIMIT $2",
+    )
+    .bind(q.slug)
+    .bind(limit)
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rows))
 }
 
 #[utoipa::path(
@@ -41,14 +54,74 @@ pub async fn list(
     request_body = CreateAttemptRequest,
     responses((status = 201, body = AttemptRecord), (status = 401), (status = 501))
 )]
-
-// TODO: return `(StatusCode::CREATED, Json<AttemptRecord>)` so the actual HTTP status
-// matches the 201 declared in the OpenAPI annotation above.
 pub async fn create(
     _user: AuthUser,
-    Json(_body): Json<CreateAttemptRequest>,
-) -> Result<Json<AttemptRecord>, AppError> {
-    Err(AppError::NotImplemented(
-        "attempt create lands in M4".to_string(),
-    ))
+    State(state): State<AppState>,
+    Json(body): Json<CreateAttemptRequest>,
+) -> Result<(StatusCode, Json<AttemptRecord>), AppError> {
+    if body.slug.trim().is_empty() {
+        return Err(AppError::Validation("slug is required".to_string()));
+    }
+    if body.code.trim().is_empty() {
+        return Err(AppError::Validation("code is required".to_string()));
+    }
+    if body.duration_ms < 0 {
+        return Err(AppError::Validation(
+            "duration_ms must be non-negative".to_string(),
+        ));
+    }
+
+    let mut tx = state.pool.begin().await?;
+
+    let attempt = sqlx::query_as::<_, AttemptRecord>(
+        "INSERT INTO attempts (slug, code, passed, duration_ms, pytest_summary)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, slug, code, passed, duration_ms, pytest_summary, created_at",
+    )
+    .bind(&body.slug)
+    .bind(&body.code)
+    .bind(body.passed)
+    .bind(body.duration_ms)
+    .bind(&body.pytest_summary)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        "INSERT INTO problems_progress (slug, status, last_code, attempt_count, solved_at, updated_at)
+         VALUES (
+             $1,
+             CASE
+                 WHEN $2 THEN 'solved'::progress_status
+                 ELSE 'attempted'::progress_status
+             END,
+             $3,
+             1,
+             CASE WHEN $2 THEN NOW() ELSE NULL END,
+             NOW()
+         )
+         ON CONFLICT (slug) DO UPDATE SET
+             status = CASE
+                 WHEN EXCLUDED.status = 'solved'::progress_status
+                      OR problems_progress.status = 'solved'::progress_status
+                     THEN 'solved'::progress_status
+                 ELSE 'attempted'::progress_status
+             END,
+             last_code = EXCLUDED.last_code,
+             attempt_count = problems_progress.attempt_count + 1,
+             solved_at = CASE
+                 WHEN EXCLUDED.status = 'solved'::progress_status
+                     THEN COALESCE(problems_progress.solved_at, NOW())
+                 ELSE problems_progress.solved_at
+             END,
+             updated_at = NOW()",
+    )
+    .bind(&body.slug)
+    .bind(body.passed)
+    .bind(&body.code)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    Ok((StatusCode::CREATED, Json(attempt)))
 }

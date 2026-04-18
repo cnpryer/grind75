@@ -1,9 +1,9 @@
-//! Stub handlers for M0 — all gated by `AuthUser`. M4 replaces the stubs with
-//! real sqlx queries against `problems_progress`.
-
 use axum::Json;
-use axum::extract::Path;
+use axum::extract::{Path, State};
+use axum::http::StatusCode;
+use sqlx::PgPool;
 
+use crate::AppState;
 use crate::auth::middleware::AuthUser;
 use crate::dto::progress::{ProgressRecord, UpsertProgressRequest};
 use crate::error::AppError;
@@ -15,8 +15,18 @@ use crate::error::AppError;
     security(("bearer_auth" = [])),
     responses((status = 200, body = [ProgressRecord]), (status = 401))
 )]
-pub async fn list(_user: AuthUser) -> Json<Vec<ProgressRecord>> {
-    Json(Vec::new())
+pub async fn list(
+    _user: AuthUser,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<ProgressRecord>>, AppError> {
+    let rows = sqlx::query_as::<_, ProgressRecord>(
+        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
+         FROM problems_progress ORDER BY updated_at DESC",
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(rows))
 }
 
 #[utoipa::path(
@@ -29,9 +39,21 @@ pub async fn list(_user: AuthUser) -> Json<Vec<ProgressRecord>> {
 )]
 pub async fn get_one(
     _user: AuthUser,
+    State(state): State<AppState>,
     Path(slug): Path<String>,
 ) -> Result<Json<ProgressRecord>, AppError> {
-    Err(AppError::NotFound(format!("No progress for slug '{slug}'")))
+    let row = sqlx::query_as::<_, ProgressRecord>(
+        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
+         FROM problems_progress WHERE slug = $1",
+    )
+    .bind(&slug)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    match row {
+        Some(progress) => Ok(Json(progress)),
+        None => Err(AppError::NotFound(format!("No progress for slug '{slug}'"))),
+    }
 }
 
 #[utoipa::path(
@@ -45,12 +67,50 @@ pub async fn get_one(
 )]
 pub async fn upsert(
     _user: AuthUser,
-    Path(_slug): Path<String>,
-    Json(_body): Json<UpsertProgressRequest>,
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Json(body): Json<UpsertProgressRequest>,
 ) -> Result<Json<ProgressRecord>, AppError> {
-    Err(AppError::NotImplemented(
-        "progress upsert lands in M4".to_string(),
-    ))
+    if body.status.is_none() && body.last_code.is_none() && body.notes.is_none() {
+        return Err(AppError::BadRequest(
+            "At least one of status, last_code, or notes must be provided".to_string(),
+        ));
+    }
+
+    let row = sqlx::query_as::<_, ProgressRecord>(
+        "INSERT INTO problems_progress (slug, status, last_code, notes, solved_at, updated_at)
+         VALUES (
+             $1,
+             COALESCE($2::progress_status, 'not_started'::progress_status),
+             $3,
+             $4,
+             CASE
+                 WHEN COALESCE($2::progress_status, 'not_started'::progress_status) = 'solved'::progress_status
+                     THEN NOW()
+                 ELSE NULL
+             END,
+             NOW()
+         )
+         ON CONFLICT (slug) DO UPDATE SET
+             status = COALESCE($2::progress_status, problems_progress.status),
+             last_code = COALESCE($3, problems_progress.last_code),
+             notes = COALESCE($4, problems_progress.notes),
+             solved_at = CASE
+                 WHEN COALESCE($2::progress_status, problems_progress.status) = 'solved'::progress_status
+                     THEN COALESCE(problems_progress.solved_at, NOW())
+                 ELSE problems_progress.solved_at
+             END,
+             updated_at = NOW()
+         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at",
+    )
+    .bind(&slug)
+    .bind(body.status)
+    .bind(body.last_code)
+    .bind(body.notes)
+    .fetch_one(&state.pool)
+    .await?;
+
+    Ok(Json(row))
 }
 
 #[utoipa::path(
@@ -60,11 +120,15 @@ pub async fn upsert(
     security(("bearer_auth" = [])),
     responses((status = 204), (status = 401), (status = 501))
 )]
-// NOTE: axum serializes `Ok(())` as HTTP 200, but the OpenAPI contract above declares
-// 204 No Content. Once this stub is replaced in M4, return `StatusCode::NO_CONTENT`
-// (i.e. `Result<StatusCode, AppError>`) so the behavior matches the documented contract.
-pub async fn reset(_user: AuthUser) -> Result<(), AppError> {
-    Err(AppError::NotImplemented(
-        "progress reset lands in M4".to_string(),
-    ))
+pub async fn reset(_user: AuthUser, State(pool): State<PgPool>) -> Result<StatusCode, AppError> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("DELETE FROM attempts")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM problems_progress")
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

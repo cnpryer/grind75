@@ -94,9 +94,11 @@ impl IntoResponse for AppError {
         let (status, code, message) = match &self {
             AppError::Auth(c) => (c.status(), c.as_str(), c.default_message().to_string()),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, "not_found", msg.clone()),
-            AppError::Validation(msg) => {
-                (StatusCode::UNPROCESSABLE_ENTITY, "validation_error", msg.clone())
-            }
+            AppError::Validation(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_error",
+                msg.clone(),
+            ),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg.clone()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "bad_request", msg.clone()),
             AppError::NotImplemented(msg) => {
@@ -112,7 +114,10 @@ impl IntoResponse for AppError {
             }
         };
 
-        let body = ErrorBody { error: code, message };
+        let body = ErrorBody {
+            error: code,
+            message,
+        };
         (status, axum::Json(body)).into_response()
     }
 }
@@ -182,9 +187,8 @@ mod tests {
 
     #[tokio::test]
     async fn expired_jwt_maps_to_token_expired() {
-        let jwt_err = jsonwebtoken::errors::Error::from(
-            jsonwebtoken::errors::ErrorKind::ExpiredSignature,
-        );
+        let jwt_err =
+            jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::ExpiredSignature);
         let app_err: AppError = jwt_err.into();
         let body = body_json(app_err.into_response()).await;
         assert_eq!(body["error"], "token_expired");

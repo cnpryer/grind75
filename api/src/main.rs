@@ -32,7 +32,10 @@ async fn main() {
     let listener = TcpListener::bind(addr).await.expect("Failed to bind");
     // ConnectInfo<SocketAddr> is required by the login/refresh handlers
     // (for audit logging) and by tower_governor's PeerIpKeyExtractor.
-    axum::serve(listener, router.into_make_service_with_connect_info::<SocketAddr>())
-        .await
-        .expect("Server error");
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .expect("Server error");
 }

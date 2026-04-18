@@ -55,6 +55,9 @@ pub async fn upsert(
     security(("bearer_auth" = [])),
     responses((status = 204), (status = 401), (status = 501))
 )]
+// NOTE: axum serializes `Ok(())` as HTTP 200, but the OpenAPI contract above declares
+// 204 No Content. Once this stub is replaced in M4, return `StatusCode::NO_CONTENT`
+// (i.e. `Result<StatusCode, AppError>`) so the behavior matches the documented contract.
 pub async fn reset(_user: AuthUser) -> Result<(), AppError> {
     Err(AppError::NotImplemented("progress reset lands in M4".to_string()))
 }

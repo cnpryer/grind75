@@ -1,13 +1,13 @@
 //! M0 auth integration test: login → refresh rotation → replay → credentials_invalid.
 //!
 //! Runs against a real Postgres via `sqlx::test`, which spins up a per-test
-//! database and applies `../migrations`. Run with `cargo test -p api`.
+//! database and applies `./migrations`. Run with `cargo test -p api`.
 //! Requires `DATABASE_URL` pointing at a live Postgres (see `docker-compose.yml`).
 
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use api::{AppState, app, config::Config};
+use api::{app, config::Config};
 use reqwest::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
@@ -31,7 +31,6 @@ async fn spawn(pool: PgPool) -> TestServer {
         access_token_ttl_secs: 900,
         refresh_token_ttl_secs: 2_592_000,
     };
-    let _state = AppState { pool: pool.clone(), config: config.clone() };
     let router = app::create_router(pool, config);
 
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
@@ -152,7 +151,7 @@ async fn refresh_rotates_and_replay_revokes(pool: PgPool) {
     // 2. Use the refresh token — get a fresh pair.
     let rotated: serde_json::Value = client
         .post(format!("{}/api/auth/refresh", server.base))
-        .json(&json!({"refresh_token": original_refresh}))
+        .json(&json!({"refresh_token": &original_refresh}))
         .send()
         .await
         .expect("refresh")
@@ -215,7 +214,7 @@ async fn logout_revokes_refresh_token(pool: PgPool) {
     let logout = client
         .post(format!("{}/api/auth/logout", server.base))
         .bearer_auth(&access)
-        .json(&json!({"refresh_token": refresh}))
+        .json(&json!({"refresh_token": &refresh}))
         .send()
         .await
         .expect("logout");

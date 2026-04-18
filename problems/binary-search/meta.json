@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 8,
+  "slug": "binary-search",
+  "title": "Binary Search",
+  "difficulty": "easy",
+  "pattern": "binary-search",
+  "leetcode_url": "https://leetcode.com/problems/binary-search/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["binary-search", "array"],
+  "order": 8,
+  "entry_function": "search"
+}

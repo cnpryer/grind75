@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 12,
+  "slug": "linked-list-cycle",
+  "title": "Linked List Cycle",
+  "difficulty": "easy",
+  "pattern": "linked-list",
+  "leetcode_url": "https://leetcode.com/problems/linked-list-cycle/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["linked-list", "two-pointer"],
+  "order": 12,
+  "entry_function": "has_cycle"
+}

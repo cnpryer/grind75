@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 6,
+  "slug": "invert-binary-tree",
+  "title": "Invert Binary Tree",
+  "difficulty": "easy",
+  "pattern": "tree",
+  "leetcode_url": "https://leetcode.com/problems/invert-binary-tree/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["tree", "dfs"],
+  "order": 6,
+  "entry_function": "invert_tree"
+}

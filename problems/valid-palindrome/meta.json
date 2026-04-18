@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 5,
+  "slug": "valid-palindrome",
+  "title": "Valid Palindrome",
+  "difficulty": "easy",
+  "pattern": "two-pointer",
+  "leetcode_url": "https://leetcode.com/problems/valid-palindrome/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["string", "two-pointer"],
+  "order": 5,
+  "entry_function": "is_palindrome"
+}

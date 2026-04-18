@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 3,
+  "slug": "merge-two-sorted-lists",
+  "title": "Merge Two Sorted Lists",
+  "difficulty": "easy",
+  "pattern": "linked-list",
+  "leetcode_url": "https://leetcode.com/problems/merge-two-sorted-lists/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["linked-list", "recursion"],
+  "order": 3,
+  "entry_function": "merge_two_sorted_lists"
+}

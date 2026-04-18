@@ -89,4 +89,4 @@ Commits `web/src/lib/api/generated.ts` and `web/src/lib/api/openapi.json` alongs
 
 ## Status
 
-Milestone **M0 (scaffolding + auth)** is complete: API with auth/refresh/logout/me, migrations, stub content routes, full web login flow with cookie-based refresh, CI. Next up: **M1** (Pyodide worker) and **M2** (editor view). See [PLAN.md § Milestones](./PLAN.md).
+See [PLAN.md § Milestones](./PLAN.md#milestones) for the initial roadmap.

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 9,
+  "slug": "flood-fill",
+  "title": "Flood Fill",
+  "difficulty": "easy",
+  "pattern": "graph",
+  "leetcode_url": "https://leetcode.com/problems/flood-fill/",
+  "recommended_minutes": 15,
+  "execution_timeout_seconds": 10,
+  "tags": ["graph", "bfs", "dfs"],
+  "order": 9,
+  "entry_function": "flood_fill"
+}

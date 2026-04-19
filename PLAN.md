@@ -361,13 +361,14 @@ Adapt:
 
 - [x] **M6 — In-browser lint/format.** Wire `@astral-sh/ruff-wasm-web` in a dedicated Web Worker; surface diagnostics as Monaco markers; format-on-save action. Ruff config sourced from `[tool.ruff]` in `pyproject.toml`. See "Python tooling: uv & ruff".
 
-- [ ] **M7 - UI Polish.** Tailwind polish. Make problem view more usable in lower resolutions (responsive layout, scrollable panes, tabs for problem panel and code box). Support both dark and light themes.
+- [ ] **M7 - Type checking with ty-wasm.** Mirror the ruff integration with Astral's ty-wasm when it's available: worker, Monaco markers for type diagnostics, config from `[tool.ty]`.
 
-- [ ] **M8 - Type checking with ty-wasm.** Mirror the ruff integration with Astral's ty-wasm when it's available: worker, Monaco markers for type diagnostics, config from `[tool.ty]`.
+- [ ] **M8 - Submission heatmap.** Heatmap of submission counts top of dashboard, inspired by GitHub's contribution graph. Each square = one day; color intensity = number of attempts that day.
 
 - [ ] **M9 — Timer.** Per-problem start/stop timer, persisted per attempt. Submit also stops it. Dashboard shows total time across attempts. Site-wide setting to auto-start on problem open.
 
-- [ ] **M10 - The rest of the problems.** Author the remaining problems left from the standard 75.
+- [ ] **M10 - UI Polish.** Tailwind polish. Make problem view more usable in lower resolutions (responsive layout, scrollable panes, tabs for problem panel and code box). Support both dark and light themes.
+
 
 Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and-sell-stock, valid-palindrome, invert-binary-tree, valid-anagram, binary-search, flood-fill, lowest-common-ancestor-of-a-bst, balanced-binary-tree, linked-list-cycle, implement-queue-using-stacks`.
 

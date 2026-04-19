@@ -167,7 +167,9 @@ export class ApiClient {
 	}
 
 	getHeatmap(days?: number) {
-		const suffix = days !== undefined ? `?days=${days}` : ''
+		const query = new URLSearchParams()
+		if (days !== undefined) query.set('days', String(days))
+		const suffix = query.size > 0 ? `?${query.toString()}` : ''
 		return this.request<HeatmapCell[]>('GET', `/api/attempts/heatmap${suffix}`)
 	}
 }

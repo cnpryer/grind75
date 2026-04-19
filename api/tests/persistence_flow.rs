@@ -150,14 +150,16 @@ async fn heatmap_aggregates_attempts_by_day(pool: PgPool) {
     assert_eq!(heatmap.status(), StatusCode::OK);
 
     let cells: Vec<serde_json::Value> = heatmap.json().await.expect("heatmap body");
-    let total: i64 = cells
-        .iter()
-        .map(|c| c["count"].as_i64().expect("count"))
-        .sum();
-    assert_eq!(total, 3);
-    for c in &cells {
-        assert!(c["date"].is_string(), "date should be an ISO string");
-    }
+    assert_eq!(
+        cells.len(),
+        1,
+        "heatmap should contain a single aggregated cell for today's attempts"
+    );
+    assert_eq!(cells[0]["count"].as_i64().expect("count"), 3);
+    assert!(
+        cells[0]["date"].is_string(),
+        "date should be an ISO string"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

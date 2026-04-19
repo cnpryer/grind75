@@ -88,7 +88,7 @@ function tooltipAnchor(colIndex: number, totalCols: number): string {
       {totalAttempts} attempt{totalAttempts === 1 ? '' : 's'} · last {weeks} weeks
     </span>
   </div>
-  <div class="flex gap-0.5" aria-label="Submission heatmap">
+  <div class="flex gap-0.5" role="img" aria-label="Submission heatmap">
     {#each columns as column, colIndex (column.days[0].date)}
         <div class="flex flex-col gap-0.5">
           <div class="h-3 text-[10px] leading-none text-gray-500">

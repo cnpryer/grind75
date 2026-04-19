@@ -59,7 +59,7 @@ export interface AttachOptions {
 }
 
 export interface RuffMonacoBinding extends IDisposable {
-	/** Force a re-check (bypassing debounce). Useful after `setValue`. */
+	/** Request a re-check. Useful after `setValue`. */
 	refresh(): void
 }
 

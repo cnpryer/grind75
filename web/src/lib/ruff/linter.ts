@@ -1,11 +1,10 @@
 /**
  * Main-thread controller for the Ruff WASM worker.
  *
- * Lazy worker spawn, serialized per-kind queueing (latest-wins for `check`),
- * and a small typed API that the Monaco integration consumes. `check` is
- * debounced upstream by the Monaco wrapper; this class is fine to call
- * unconditionally on every keystroke but exposes `cancel()` so stale
- * diagnostics don't race a newer request.
+ * Provides lazy worker spawn and a small typed API that the Monaco
+ * integration consumes. `check` is debounced upstream by the Monaco
+ * wrapper; this class forwards requests to the worker and matches
+ * responses back to callers by request ID.
  */
 
 import type { RuffDiagnostic, WorkerRequest, WorkerResponse } from './protocol'

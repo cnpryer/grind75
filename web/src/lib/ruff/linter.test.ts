@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { RuffLinter } from './linter'
-import { diagnosticsToMarkers, MARKER_OWNER } from './monaco'
+import { attachRuffToMonaco, diagnosticsToMarkers, MARKER_OWNER } from './monaco'
 import type { RuffDiagnostic, WorkerRequest, WorkerResponse } from './protocol'
 
 class StubWorker {
@@ -184,5 +184,148 @@ describe('diagnosticsToMarkers', () => {
 			endColumn: 6,
 			message: 'zero-width',
 		})
+	})
+})
+
+describe('attachRuffToMonaco', () => {
+	beforeEach(() => vi.useFakeTimers())
+	afterEach(() => vi.useRealTimers())
+
+	function makeLinter(opts: { diagnostics?: RuffDiagnostic[]; formatted?: string } = {}) {
+		return new RuffLinter(
+			() =>
+				new StubWorker((req) => {
+					if (req.type === 'check') {
+						return [
+							{
+								type: 'check:result',
+								requestId: req.requestId,
+								diagnostics: opts.diagnostics ?? [],
+							},
+						]
+					}
+					if (req.type === 'format') {
+						return [
+							{
+								type: 'format:result',
+								requestId: req.requestId,
+								source: opts.formatted ?? req.source,
+							},
+						]
+					}
+					return []
+				}) as unknown as Worker,
+		)
+	}
+
+	function makeModel(source = '') {
+		let content = source
+		const listeners: Array<() => void> = []
+		const contentSubDispose = vi.fn()
+		const model = {
+			getValue: () => content,
+			setValue(v: string) {
+				content = v
+				for (const fn of listeners) fn()
+			},
+			getFullModelRange: () => ({
+				startLineNumber: 1,
+				startColumn: 1,
+				endLineNumber: 1,
+				endColumn: content.length + 1,
+			}),
+			onDidChangeContent: vi.fn((fn: () => void) => {
+				listeners.push(fn)
+				return { dispose: contentSubDispose }
+			}),
+		}
+		return { model, contentSubDispose }
+	}
+
+	function makeMonaco() {
+		const setModelMarkers = vi.fn()
+		const monaco = {
+			MarkerSeverity: { Warning: 4 },
+			KeyMod: { CtrlCmd: 2048 },
+			KeyCode: { KeyS: 49 },
+			editor: {
+				setModelMarkers,
+				EditorOption: { readOnly: 83 },
+			},
+		} as unknown as typeof import('monaco-editor')
+		return { monaco, setModelMarkers }
+	}
+
+	function makeEditor(model: ReturnType<typeof makeModel>['model']) {
+		const executeEdits = vi.fn()
+		const actionDispose = vi.fn()
+		let capturedRun: ((ed: unknown) => Promise<void>) | null = null
+		const editor = {
+			getModel: () => model,
+			getOption: vi.fn().mockReturnValue(false),
+			executeEdits,
+			addAction: vi.fn((def: { run: (ed: unknown) => Promise<void> }) => {
+				capturedRun = def.run
+				return { dispose: actionDispose }
+			}),
+		}
+		return {
+			editor: editor as unknown as import('monaco-editor').editor.IStandaloneCodeEditor,
+			executeEdits,
+			actionDispose,
+			runAction: () => capturedRun?.(editor) ?? Promise.resolve(),
+		}
+	}
+
+	it('runs an initial check and publishes markers', async () => {
+		const { model } = makeModel('import os\n')
+		const { monaco, setModelMarkers } = makeMonaco()
+		const { editor } = makeEditor(model)
+		const linter = makeLinter({ diagnostics: [UNUSED_IMPORT] })
+
+		attachRuffToMonaco({ monaco, editor, linter })
+		await vi.runAllTimersAsync()
+
+		expect(setModelMarkers).toHaveBeenCalledWith(
+			model,
+			MARKER_OWNER,
+			expect.arrayContaining([
+				expect.objectContaining({ message: 'F401: `os` imported but unused' }),
+			]),
+		)
+	})
+
+	it('clears markers and disposes subscriptions on dispose', async () => {
+		const { model, contentSubDispose } = makeModel('x = 1')
+		const { monaco, setModelMarkers } = makeMonaco()
+		const { editor, actionDispose } = makeEditor(model)
+		const linter = makeLinter()
+
+		const binding = attachRuffToMonaco({ monaco, editor, linter })
+		await vi.runAllTimersAsync()
+
+		binding.dispose()
+
+		expect(setModelMarkers).toHaveBeenLastCalledWith(model, MARKER_OWNER, [])
+		expect(contentSubDispose).toHaveBeenCalled()
+		expect(actionDispose).toHaveBeenCalled()
+	})
+
+	it('format action applies formatted source via executeEdits', async () => {
+		const { model } = makeModel('print(1)   ')
+		const { monaco } = makeMonaco()
+		const { editor, executeEdits, runAction } = makeEditor(model)
+		const linter = makeLinter({ formatted: 'print(1)\n' })
+
+		attachRuffToMonaco({ monaco, editor, linter })
+		await vi.runAllTimersAsync()
+
+		const p = runAction()
+		await vi.runAllTimersAsync()
+		await p
+
+		expect(executeEdits).toHaveBeenCalledWith('ruff.format', [
+			expect.objectContaining({ text: 'print(1)\n' }),
+		])
 	})
 })

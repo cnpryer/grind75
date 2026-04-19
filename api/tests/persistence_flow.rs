@@ -156,10 +156,7 @@ async fn heatmap_aggregates_attempts_by_day(pool: PgPool) {
         "heatmap should contain a single aggregated cell for today's attempts"
     );
     assert_eq!(cells[0]["count"].as_i64().expect("count"), 3);
-    assert!(
-        cells[0]["date"].is_string(),
-        "date should be an ISO string"
-    );
+    assert!(cells[0]["date"].is_string(), "date should be an ISO string");
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -165,7 +165,9 @@ async function main(): Promise<void> {
 	}
 
 	const entries = await readdir(PROBLEMS_DIR, { withFileTypes: true })
-	const slugs = entries.filter((e) => e.isDirectory()).map((e) => e.name)
+	const slugs = entries
+		.filter((e) => e.isDirectory() && SLUG_RE.test(e.name))
+		.map((e) => e.name)
 	const metas: ProblemMeta[] = []
 
 	for (const slug of slugs) {

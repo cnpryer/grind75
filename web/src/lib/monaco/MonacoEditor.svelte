@@ -8,6 +8,11 @@ type Props = {
   readOnly?: boolean
   height?: string
   onChange?: (v: string) => void
+  /**
+   * Enable Ruff-powered diagnostics + format-on-save (Cmd/Ctrl-S). Off by
+   * default so readonly panes (e.g. the Tests tab) don't spin up a linter.
+   */
+  lint?: boolean
 }
 
 let {
@@ -16,6 +21,7 @@ let {
   readOnly = false,
   height = '100%',
   onChange,
+  lint = false,
 }: Props = $props()
 
 let container: HTMLDivElement | null = null
@@ -46,6 +52,27 @@ $effect(() => {
     })
     disposers.push(() => sub.dispose())
     disposers.push(() => editor.dispose())
+
+    if (lint && language === 'python' && !readOnly) {
+      try {
+        const [{ RuffLinter }, { attachRuffToMonaco }, monacoNs] = await Promise.all([
+          import('$lib/ruff/linter'),
+          import('$lib/ruff/monaco'),
+          import('monaco-editor'),
+        ])
+        if (cancelled) return
+        const linter = new RuffLinter()
+        const binding = attachRuffToMonaco({
+          monaco: monacoNs,
+          editor,
+          linter,
+        })
+        disposers.push(() => binding.dispose())
+        disposers.push(() => linter.dispose())
+      } catch (err) {
+        console.warn('ruff: failed to attach linter', err)
+      }
+    }
   })()
 
   return () => {

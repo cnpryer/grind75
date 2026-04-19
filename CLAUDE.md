@@ -22,3 +22,5 @@ cd web && bun install && bun run dev
 ```
 
 Open http://localhost:5173 → login → dashboard.
+
+See [README.md](./README.md) for more.

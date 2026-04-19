@@ -4,6 +4,7 @@
     "": {
       "name": "grind75-web",
       "dependencies": {
+        "@astral-sh/ruff-wasm-web": "^0.15.11",
         "dompurify": "^3.2.0",
         "marked": "^14.1.0",
         "monaco-editor": "^0.54.0",
@@ -32,6 +33,8 @@
   },
   "packages": {
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],
+
+    "@astral-sh/ruff-wasm-web": ["@astral-sh/ruff-wasm-web@0.15.11", "", {}, "sha512-mBxRSG+tkBAJMPk5FcypC081978I5aj5+/AnLh23bgvx7BPoz1P+kJxGjFMTWUHAZSncLatTSq8vgoKGZO5Q9w=="],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.28.5", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw=="],
 

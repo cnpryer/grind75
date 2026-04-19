@@ -404,7 +404,7 @@ async function logout() {
       </div>
 
       <div class="min-h-0 flex-1" class:hidden={activeTab !== 'code'}>
-        <MonacoEditor bind:value={code} language="python" height="100%" />
+        <MonacoEditor bind:value={code} language="python" height="100%" lint={true} />
       </div>
 
       <div class="min-h-0 flex-1" class:hidden={activeTab !== 'tests'}>

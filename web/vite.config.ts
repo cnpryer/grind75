@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => ({
 					if (id.includes('node_modules')) {
 						if (id.includes('monaco-editor')) return 'monaco-editor'
 						if (id.includes('pyodide')) return 'pyodide'
+						if (id.includes('@astral-sh/ruff-wasm-web')) return 'ruff-wasm'
 						if (id.includes('svelte')) return 'vendor-svelte'
 						return 'vendor'
 					}

@@ -17,6 +17,7 @@ web/.svelte-kit/
 web/static/problems/
 web/static/pyodide/
 web/src/lib/problems/generated-manifest.json
+web/src/lib/ruff/generated-config.json
 
 # Python / uv
 .venv/

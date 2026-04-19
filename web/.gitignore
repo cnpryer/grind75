@@ -10,3 +10,4 @@ vite.config.ts.timestamp-*
 /static/pyodide
 /static/problems
 /src/lib/problems/generated-manifest.json
+/src/lib/ruff/generated-config.json

@@ -206,6 +206,50 @@ async fn unsolve_flips_solved_back_to_attempted(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn unsolve_is_noop_for_non_solved(pool: PgPool) {
+    let server = spawn(pool).await;
+    let client = client();
+    let access = login_access_token(&client, &server.base).await;
+
+    client
+        .put(format!("{}/api/progress/two-sum", server.base))
+        .bearer_auth(&access)
+        .json(&json!({"status": "attempted"}))
+        .send()
+        .await
+        .expect("seed");
+
+    let before: serde_json::Value = client
+        .get(format!("{}/api/progress/two-sum", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("fetch before")
+        .json()
+        .await
+        .expect("before body");
+    let updated_before = before["updated_at"]
+        .as_str()
+        .expect("updated_at")
+        .to_string();
+
+    let res = client
+        .post(format!("{}/api/progress/two-sum/unsolve", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("unsolve");
+    assert_eq!(res.status(), StatusCode::OK);
+    let body: serde_json::Value = res.json().await.expect("unsolve body");
+    assert_eq!(body["status"], "attempted");
+    assert_eq!(
+        body["updated_at"].as_str().expect("updated_at"),
+        updated_before,
+        "unsolve must not touch updated_at for non-solved rows"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn upsert_progress_roundtrip(pool: PgPool) {
     let server = spawn(pool).await;
     let client = client();

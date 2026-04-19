@@ -128,22 +128,32 @@ pub async fn unsolve(
     State(state): State<AppState>,
     Path(slug): Path<String>,
 ) -> Result<Json<ProgressRecord>, AppError> {
-    let row = sqlx::query_as::<_, ProgressRecord>(
+    let updated = sqlx::query_as::<_, ProgressRecord>(
         "UPDATE problems_progress
-         SET status = CASE
-                 WHEN status = 'solved'::progress_status THEN 'attempted'::progress_status
-                 ELSE status
-             END,
+         SET status = 'attempted'::progress_status,
              solved_at = NULL,
              updated_at = NOW()
          WHERE slug = $1
+           AND status = 'solved'::progress_status
          RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at",
     )
     .bind(&slug)
     .fetch_optional(&state.pool)
     .await?;
 
-    match row {
+    if let Some(progress) = updated {
+        return Ok(Json(progress));
+    }
+
+    let existing = sqlx::query_as::<_, ProgressRecord>(
+        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
+         FROM problems_progress WHERE slug = $1",
+    )
+    .bind(&slug)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    match existing {
         Some(progress) => Ok(Json(progress)),
         None => Err(AppError::NotFound(format!("No progress for slug '{slug}'"))),
     }

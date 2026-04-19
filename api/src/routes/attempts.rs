@@ -37,7 +37,7 @@ pub async fn list(
 ) -> Result<Json<Vec<AttemptRecord>>, AppError> {
     let limit = q.limit.unwrap_or(50).clamp(1, 200) as i64;
     let rows = sqlx::query_as::<_, AttemptRecord>(
-        "SELECT id, slug, code, passed, duration_ms, pytest_summary, created_at
+        "SELECT id, slug, code, passed, duration_ms, elapsed_ms, pytest_summary, created_at
          FROM attempts
          WHERE ($1::text IS NULL OR slug = $1)
          ORDER BY created_at DESC
@@ -75,18 +75,24 @@ pub async fn create(
             "duration_ms must be non-negative".to_string(),
         ));
     }
+    if body.elapsed_ms < 0 {
+        return Err(AppError::Validation(
+            "elapsed_ms must be non-negative".to_string(),
+        ));
+    }
 
     let mut tx = state.pool.begin().await?;
 
     let attempt = sqlx::query_as::<_, AttemptRecord>(
-        "INSERT INTO attempts (slug, code, passed, duration_ms, pytest_summary)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, slug, code, passed, duration_ms, pytest_summary, created_at",
+        "INSERT INTO attempts (slug, code, passed, duration_ms, elapsed_ms, pytest_summary)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, slug, code, passed, duration_ms, elapsed_ms, pytest_summary, created_at",
     )
     .bind(&body.slug)
     .bind(&body.code)
     .bind(body.passed)
     .bind(body.duration_ms)
+    .bind(body.elapsed_ms)
     .bind(&body.pytest_summary)
     .fetch_one(&mut *tx)
     .await?;

@@ -160,6 +160,52 @@ async fn heatmap_aggregates_attempts_by_day(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn unsolve_flips_solved_back_to_attempted(pool: PgPool) {
+    let server = spawn(pool).await;
+    let client = client();
+    let access = login_access_token(&client, &server.base).await;
+
+    let submit = client
+        .post(format!("{}/api/attempts", server.base))
+        .bearer_auth(&access)
+        .json(&json!({
+            "slug": "two-sum",
+            "code": "def two_sum(nums, target): return [0, 1]",
+            "passed": true,
+            "duration_ms": 9,
+            "elapsed_ms": 60_000,
+            "pytest_summary": {"passed": 1, "failed": 0, "errored": 0, "total": 1, "tests": []}
+        }))
+        .send()
+        .await
+        .expect("submit");
+    assert_eq!(submit.status(), StatusCode::CREATED);
+
+    let unsolve = client
+        .post(format!("{}/api/progress/two-sum/unsolve", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("unsolve");
+    assert_eq!(unsolve.status(), StatusCode::OK);
+    let body: serde_json::Value = unsolve.json().await.expect("unsolve body");
+    assert_eq!(body["status"], "attempted");
+    assert!(body["solved_at"].is_null());
+    assert_eq!(body["attempt_count"], 1);
+
+    let missing = client
+        .post(format!(
+            "{}/api/progress/never-touched/unsolve",
+            server.base
+        ))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("unsolve missing");
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn upsert_progress_roundtrip(pool: PgPool) {
     let server = spawn(pool).await;
     let client = client();

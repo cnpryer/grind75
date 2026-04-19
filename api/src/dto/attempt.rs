@@ -9,6 +9,10 @@ pub struct CreateAttemptRequest {
     pub passed: bool,
     pub duration_ms: i32,
     pub pytest_summary: serde_json::Value,
+    /// Wall-clock time the user spent before submitting (from the per-problem timer).
+    /// Optional so pre-M9 clients still work.
+    #[serde(default)]
+    pub elapsed_ms: i32,
 }
 
 #[derive(Debug, Serialize, ToSchema, sqlx::FromRow)]
@@ -18,6 +22,7 @@ pub struct AttemptRecord {
     pub code: String,
     pub passed: bool,
     pub duration_ms: i32,
+    pub elapsed_ms: i32,
     pub pytest_summary: serde_json::Value,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }

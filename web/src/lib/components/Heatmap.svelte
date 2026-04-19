@@ -71,6 +71,14 @@ function tooltip(day: DayCell): string {
     ? `No attempts on ${day.date}`
     : `${day.count} attempt${day.count === 1 ? '' : 's'} on ${day.date}`
 }
+
+// Flip tooltip anchor at the grid edges so the ~180px-wide pill
+// stays inside the scroll container instead of getting clipped.
+function tooltipAnchor(colIndex: number, totalCols: number): string {
+  if (colIndex < 4) return 'left-0'
+  if (colIndex > totalCols - 5) return 'right-0'
+  return 'left-1/2 -translate-x-1/2'
+}
 </script>
 
 <section class="mb-6">
@@ -80,22 +88,29 @@ function tooltip(day: DayCell): string {
       {totalAttempts} attempt{totalAttempts === 1 ? '' : 's'} · last {weeks} weeks
     </span>
   </div>
-  <div class="overflow-x-auto">
-    <div class="flex gap-0.5" aria-label="Submission heatmap">
-      {#each columns as column (column.days[0].date)}
+  <div class="flex gap-0.5" aria-label="Submission heatmap">
+    {#each columns as column, colIndex (column.days[0].date)}
         <div class="flex flex-col gap-0.5">
           <div class="h-3 text-[10px] leading-none text-gray-500">
             {column.monthLabel ?? ''}
           </div>
           {#each column.days as day (day.date)}
-            <div
-              class={`h-2.5 w-2.5 rounded-sm ${colorClass(day.count, day.future)}`}
-              title={tooltip(day)}
-              aria-hidden={day.future}
-            ></div>
+            <div class="group relative">
+              <div
+                class={`h-2.5 w-2.5 rounded-sm ${colorClass(day.count, day.future)}`}
+                aria-hidden={day.future}
+              ></div>
+              {#if !day.future}
+                <div
+                  role="tooltip"
+                  class={`pointer-events-none absolute bottom-full z-10 mb-1 hidden whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg group-hover:block ${tooltipAnchor(colIndex, columns.length)}`}
+                >
+                  {tooltip(day)}
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
       {/each}
-    </div>
   </div>
 </section>

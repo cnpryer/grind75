@@ -1,2 +1,15 @@
-def MyQueue(*args, **kwargs):
-    raise NotImplementedError("Placeholder starter for M3; full starter lands in M5.")
+class MyQueue:
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    def push(self, x: int) -> None:
+        raise NotImplementedError
+
+    def pop(self) -> int:
+        raise NotImplementedError
+
+    def peek(self) -> int:
+        raise NotImplementedError
+
+    def empty(self) -> bool:
+        raise NotImplementedError

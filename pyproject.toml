@@ -1,0 +1,34 @@
+[project]
+name = "grind75"
+version = "0.1.0"
+description = "Host-side toolchain for the grind75 problem set (authoring, linting, type-checking, tests)."
+requires-python = ">=3.12"
+
+[dependency-groups]
+# Pin `pytest` to the version Pyodide bundles so host tests match browser behavior.
+# See `web/static/pyodide/pyodide-lock.json` after running `scripts/stage-pyodide.mjs`.
+dev = [
+  "pytest==8.3.4",
+  "ruff==0.8.4",
+  "ty==0.0.1a5",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["problems"]
+python_files = ["tests.py"]
+# `importmode=importlib` gives each `tests.py` a unique module name so
+# same-named files across slugs don't collide in `sys.modules`. Combined with
+# `problems/conftest.py`, which swaps `sys.path` and evicts the cached
+# `solution` module per collected file, this lets `from solution import X`
+# resolve to the correct slug.
+addopts = "-q --import-mode=importlib"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ty]
+# Placeholder for ty (Astral type-checker) config as it stabilizes.

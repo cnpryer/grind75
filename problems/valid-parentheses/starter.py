@@ -1,2 +1,2 @@
-def valid_parentheses(*args, **kwargs):
-    raise NotImplementedError("Placeholder starter for M3; full starter lands in M5.")
+def valid_parentheses(s: str) -> bool:
+    raise NotImplementedError

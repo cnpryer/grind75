@@ -14,4 +14,12 @@ class TreeNode:
 
 
 def lowest_common_ancestor(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode:
-    raise NotImplementedError
+    node = root
+    while node is not None:
+        if p.val < node.val and q.val < node.val:
+            node = node.left
+        elif p.val > node.val and q.val > node.val:
+            node = node.right
+        else:
+            return node
+    raise ValueError("p and q must both exist in the tree")

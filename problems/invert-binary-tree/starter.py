@@ -1,2 +1,17 @@
-def invert_tree(*args, **kwargs):
-    raise NotImplementedError("Placeholder starter for M3; full starter lands in M5.")
+from __future__ import annotations
+
+
+class TreeNode:
+    def __init__(
+        self,
+        val: int = 0,
+        left: TreeNode | None = None,
+        right: TreeNode | None = None,
+    ):
+        self.val = val
+        self.left = left
+        self.right = right
+
+
+def invert_tree(root: TreeNode | None) -> TreeNode | None:
+    raise NotImplementedError

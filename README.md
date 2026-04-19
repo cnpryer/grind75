@@ -24,7 +24,7 @@ cargo run -p api
 cd web && bun install && bun run dev
 ```
 
-Open <http://localhost:5173> and sign in with `ADMIN_USERNAME` + the password you hashed → dashboard.
+Open <http://localhost:5173> and sign in with `ADMIN_USERNAME` + the password you hashed.
 
 ## Layout
 

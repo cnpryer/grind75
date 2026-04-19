@@ -367,10 +367,10 @@ Adapt:
 
 - [ ] **M9 — Timer.** Per-problem start/stop timer, persisted per attempt. Submit also stops it. Dashboard shows total time across attempts. Site-wide setting to auto-start on problem open.
 
-- [ ] **M10 - UI Polish.** Tailwind polish. Make problem view more usable in lower resolutions (responsive layout, scrollable panes, tabs for problem panel and code box). Support both dark and light themes.
+- [ ] **M10 - UI polish.** Tailwind polish. Make problem view more usable in lower resolutions (responsive layout, scrollable panes, tabs for problem panel and code box). Support both dark and light themes.
 
 
-Slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and-sell-stock, valid-palindrome, invert-binary-tree, valid-anagram, binary-search, flood-fill, lowest-common-ancestor-of-a-bst, balanced-binary-tree, linked-list-cycle, implement-queue-using-stacks`.
+Example slugs: `two-sum, valid-parentheses, merge-two-sorted-lists, best-time-to-buy-and-sell-stock, valid-palindrome, invert-binary-tree, valid-anagram, binary-search, flood-fill, lowest-common-ancestor-of-a-bst, balanced-binary-tree, linked-list-cycle, implement-queue-using-stacks`.
 
 ## Critical files
 

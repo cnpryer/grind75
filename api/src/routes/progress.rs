@@ -113,6 +113,52 @@ pub async fn upsert(
     Ok(Json(row))
 }
 
+/// Flip a `solved` problem back to `attempted` so the user can lap it again.
+/// No-op (returns the existing row) when status is already not `solved`.
+#[utoipa::path(
+    post,
+    path = "/api/progress/{slug}/unsolve",
+    tag = "progress",
+    security(("bearer_auth" = [])),
+    params(("slug" = String, Path, description = "Problem slug")),
+    responses((status = 200, body = ProgressRecord), (status = 404), (status = 401))
+)]
+pub async fn unsolve(
+    _user: AuthUser,
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+) -> Result<Json<ProgressRecord>, AppError> {
+    let updated = sqlx::query_as::<_, ProgressRecord>(
+        "UPDATE problems_progress
+         SET status = 'attempted'::progress_status,
+             solved_at = NULL,
+             updated_at = NOW()
+         WHERE slug = $1
+           AND status = 'solved'::progress_status
+         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at",
+    )
+    .bind(&slug)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if let Some(progress) = updated {
+        return Ok(Json(progress));
+    }
+
+    let existing = sqlx::query_as::<_, ProgressRecord>(
+        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
+         FROM problems_progress WHERE slug = $1",
+    )
+    .bind(&slug)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    match existing {
+        Some(progress) => Ok(Json(progress)),
+        None => Err(AppError::NotFound(format!("No progress for slug '{slug}'"))),
+    }
+}
+
 #[utoipa::path(
     delete,
     path = "/api/progress",

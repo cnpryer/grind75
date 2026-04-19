@@ -28,6 +28,7 @@ use crate::routes;
         routes::progress::list,
         routes::progress::get_one,
         routes::progress::upsert,
+        routes::progress::unsolve,
         routes::progress::reset,
         routes::attempts::list,
         routes::attempts::create,
@@ -124,6 +125,10 @@ pub fn create_router(pool: PgPool, config: Config) -> Router {
         .route(
             "/api/progress/{slug}",
             get(routes::progress::get_one).put(routes::progress::upsert),
+        )
+        .route(
+            "/api/progress/{slug}/unsolve",
+            post(routes::progress::unsolve),
         )
         .route(
             "/api/attempts",

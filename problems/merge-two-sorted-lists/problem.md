@@ -7,8 +7,11 @@ Merge them into a single sorted list by splicing together the existing nodes
 A linked-list node is defined as:
 
 ```python
+from __future__ import annotations
+
+
 class ListNode:
-    def __init__(self, val: int = 0, next: "ListNode | None" = None):
+    def __init__(self, val: int = 0, next: ListNode | None = None):
         self.val = val
         self.next = next
 ```

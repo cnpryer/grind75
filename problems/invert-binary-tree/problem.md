@@ -6,8 +6,11 @@ and right child) and return the root.
 A tree node is defined as:
 
 ```python
+from __future__ import annotations
+
+
 class TreeNode:
-    def __init__(self, val: int = 0, left: "TreeNode | None" = None, right: "TreeNode | None" = None):
+    def __init__(self, val: int = 0, left: TreeNode | None = None, right: TreeNode | None = None):
         self.val = val
         self.left = left
         self.right = right

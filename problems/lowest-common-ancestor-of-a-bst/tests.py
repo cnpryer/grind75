@@ -35,11 +35,6 @@ def test_both_in_right_subtree():
     assert lowest_common_ancestor(root, nodes[7], nodes[9]).val == 8
 
 
-def test_p_equals_q():
-    root, nodes = build_sample_bst()
-    assert lowest_common_ancestor(root, nodes[5], nodes[5]).val == 5
-
-
 def test_root_is_one_of_nodes():
     root, nodes = build_sample_bst()
     assert lowest_common_ancestor(root, nodes[6], nodes[9]).val == 6

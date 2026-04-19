@@ -49,8 +49,15 @@ Output: True
 
 ## Constraints
 
-- `0 <= number of nodes <= 5_000`
+- `0 <= number of nodes <= 1_000`
 - `-10**4 <= node.val <= 10**4`
+
+> Note: LeetCode allows up to 5,000 nodes here. The constraint is tightened
+> for grind75 because the canonical solution is a post-order DFS, and a
+> highly skewed tree of more than ~1,000 nodes would exceed Python's default
+> recursion limit. If you reach for an iterative explicit-stack version,
+> the higher bound is fine — but the recursive answer is the one that
+> matters for interviews.
 
 ## Hints
 

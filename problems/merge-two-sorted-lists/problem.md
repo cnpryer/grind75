@@ -1,8 +1,8 @@
 # Merge Two Sorted Lists
 
 You are given the heads of two sorted singly-linked lists `l1` and `l2`.
-Merge them into a single sorted list by splicing together the existing nodes
-(no new allocations required). Return the head of the merged list.
+Merge them into a single sorted list by splicing together the existing nodes.
+Return the head of the merged list.
 
 A linked-list node is defined as:
 

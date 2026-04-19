@@ -1,6 +1,7 @@
 <script lang="ts">
 import { goto } from '$app/navigation'
 import type { ProgressRecord } from '$lib/api/client'
+import Heatmap from '$lib/components/Heatmap.svelte'
 import type { ProblemMeta } from '$lib/problems/types'
 
 let { data } = $props()
@@ -78,6 +79,7 @@ const statusLabel: Record<string, string> = {
       </button>
     </div>
   </header>
+  <Heatmap cells={data.heatmap ?? []} />
   <div class="space-y-8">
     {#each grouped as group (group.pattern)}
       <section>

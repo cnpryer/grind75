@@ -119,6 +119,48 @@ async fn submit_attempt_updates_progress(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn heatmap_aggregates_attempts_by_day(pool: PgPool) {
+    let server = spawn(pool).await;
+    let client = client();
+    let access = login_access_token(&client, &server.base).await;
+
+    for _ in 0..3 {
+        let res = client
+            .post(format!("{}/api/attempts", server.base))
+            .bearer_auth(&access)
+            .json(&json!({
+                "slug": "two-sum",
+                "code": "def two_sum(nums, target): return [0, 1]",
+                "passed": true,
+                "duration_ms": 12,
+                "pytest_summary": {"passed": 1, "failed": 0, "errored": 0, "total": 1, "tests": []}
+            }))
+            .send()
+            .await
+            .expect("attempt");
+        assert_eq!(res.status(), StatusCode::CREATED);
+    }
+
+    let heatmap = client
+        .get(format!("{}/api/attempts/heatmap", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("heatmap");
+    assert_eq!(heatmap.status(), StatusCode::OK);
+
+    let cells: Vec<serde_json::Value> = heatmap.json().await.expect("heatmap body");
+    let total: i64 = cells
+        .iter()
+        .map(|c| c["count"].as_i64().expect("count"))
+        .sum();
+    assert_eq!(total, 3);
+    for c in &cells {
+        assert!(c["date"].is_string(), "date should be an ISO string");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn upsert_progress_roundtrip(pool: PgPool) {
     let server = spawn(pool).await;
     let client = client();

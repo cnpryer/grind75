@@ -5,13 +5,18 @@ use serde::Deserialize;
 
 use crate::AppState;
 use crate::auth::middleware::AuthUser;
-use crate::dto::attempt::{AttemptRecord, CreateAttemptRequest};
+use crate::dto::attempt::{AttemptRecord, CreateAttemptRequest, HeatmapCell};
 use crate::error::AppError;
 
 #[derive(Debug, Deserialize)]
 pub struct ListAttemptsQuery {
     pub slug: Option<String>,
     pub limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HeatmapQuery {
+    pub days: Option<u32>,
 }
 
 #[utoipa::path(
@@ -124,4 +129,39 @@ pub async fn create(
     tx.commit().await?;
 
     Ok((StatusCode::CREATED, Json(attempt)))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/attempts/heatmap",
+    tag = "attempts",
+    security(("bearer_auth" = [])),
+    params(
+        ("days" = Option<u32>, Query, description = "Window size in days (default 365, max 730)")
+    ),
+    responses((status = 200, body = [HeatmapCell]), (status = 401))
+)]
+pub async fn heatmap(
+    _user: AuthUser,
+    State(state): State<AppState>,
+    Query(q): Query<HeatmapQuery>,
+) -> Result<Json<Vec<HeatmapCell>>, AppError> {
+    let days = q.days.unwrap_or(365).clamp(1, 730) as i32;
+    let rows = sqlx::query_as::<_, (chrono::NaiveDate, i64)>(
+        "SELECT (created_at AT TIME ZONE 'UTC')::date AS day,
+                COUNT(*)::bigint AS count
+         FROM attempts
+         WHERE created_at >= NOW() - make_interval(days => $1)
+         GROUP BY day
+         ORDER BY day",
+    )
+    .bind(days)
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(
+        rows.into_iter()
+            .map(|(date, count)| HeatmapCell { date, count })
+            .collect(),
+    ))
 }

@@ -21,3 +21,9 @@ pub struct AttemptRecord {
     pub pytest_summary: serde_json::Value,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct HeatmapCell {
+    pub date: chrono::NaiveDate,
+    pub count: i64,
+}

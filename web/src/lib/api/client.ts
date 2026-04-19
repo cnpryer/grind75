@@ -70,6 +70,12 @@ export interface ListAttemptsParams {
 	limit?: number
 }
 
+export interface HeatmapCell {
+	/** ISO date (YYYY-MM-DD) in UTC. */
+	date: string
+	count: number
+}
+
 /**
  * Minimal typed HTTP client for the Rust API. Constructed server-side only
  * (inside `+*.server.ts` / `+server.ts`) with the access token read from
@@ -158,5 +164,12 @@ export class ApiClient {
 
 	createAttempt(data: CreateAttemptRequest) {
 		return this.request<AttemptRecord>('POST', '/api/attempts', data)
+	}
+
+	getHeatmap(days?: number) {
+		const query = new URLSearchParams()
+		if (days !== undefined) query.set('days', String(days))
+		const suffix = query.size > 0 ? `?${query.toString()}` : ''
+		return this.request<HeatmapCell[]>('GET', `/api/attempts/heatmap${suffix}`)
 	}
 }

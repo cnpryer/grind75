@@ -362,8 +362,8 @@ async function logout() {
             Output
           </button>
         </div>
-        <div class="flex items-center gap-2">
-          <div class="mr-2 flex items-center gap-1 text-sm">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <div class="flex items-center gap-1 text-sm">
             <span class="font-mono tabular-nums text-gray-700" aria-live="off">
               {formatElapsed(timer.elapsedMs)}
             </span>
@@ -397,7 +397,7 @@ async function logout() {
           </button>
           <button
             type="button"
-            class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+            class="whitespace-nowrap rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
             onclick={resetToStarter}
             disabled={runState.kind === 'running' || runState.kind === 'loading'}
           >

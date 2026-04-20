@@ -39,6 +39,8 @@ export interface ProgressRecord {
 	attempt_count: number
 	solved_at: string | null
 	updated_at: string
+	/** Sum of `attempts.elapsed_ms` across every submission for this slug. */
+	total_elapsed_ms: number
 }
 
 export interface UpsertProgressRequest {
@@ -149,6 +151,10 @@ export class ApiClient {
 
 	upsertProgress(slug: string, data: UpsertProgressRequest) {
 		return this.request<ProgressRecord>('PUT', `/api/progress/${encodeURIComponent(slug)}`, data)
+	}
+
+	unsolveProgress(slug: string) {
+		return this.request<ProgressRecord>('POST', `/api/progress/${encodeURIComponent(slug)}/unsolve`)
 	}
 
 	resetProgress() {

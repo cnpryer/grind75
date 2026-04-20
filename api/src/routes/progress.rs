@@ -19,9 +19,18 @@ pub async fn list(
     _user: AuthUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ProgressRecord>>, AppError> {
+    // Pre-aggregate `attempts` once with a GROUP BY, then LEFT JOIN — a single
+    // pass instead of N correlated subqueries when the dashboard has many slugs.
     let rows = sqlx::query_as::<_, ProgressRecord>(
-        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
-         FROM problems_progress ORDER BY updated_at DESC",
+        "SELECT p.slug, p.status, p.last_code, p.notes, p.attempt_count, p.solved_at, p.updated_at, \
+                COALESCE(a.total_elapsed_ms, 0)::bigint AS total_elapsed_ms \
+         FROM problems_progress p \
+         LEFT JOIN ( \
+             SELECT slug, SUM(elapsed_ms) AS total_elapsed_ms \
+             FROM attempts \
+             GROUP BY slug \
+         ) a ON a.slug = p.slug \
+         ORDER BY p.updated_at DESC",
     )
     .fetch_all(&state.pool)
     .await?;
@@ -43,8 +52,9 @@ pub async fn get_one(
     Path(slug): Path<String>,
 ) -> Result<Json<ProgressRecord>, AppError> {
     let row = sqlx::query_as::<_, ProgressRecord>(
-        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
-         FROM problems_progress WHERE slug = $1",
+        "SELECT p.slug, p.status, p.last_code, p.notes, p.attempt_count, p.solved_at, p.updated_at, \
+                COALESCE((SELECT SUM(a.elapsed_ms) FROM attempts a WHERE a.slug = p.slug), 0)::bigint AS total_elapsed_ms \
+         FROM problems_progress p WHERE p.slug = $1",
     )
     .bind(&slug)
     .fetch_optional(&state.pool)
@@ -101,7 +111,8 @@ pub async fn upsert(
                  ELSE problems_progress.solved_at
              END,
              updated_at = NOW()
-         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at",
+         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at, \
+                   COALESCE((SELECT SUM(a.elapsed_ms) FROM attempts a WHERE a.slug = $1), 0)::bigint AS total_elapsed_ms",
     )
     .bind(&slug)
     .bind(body.status)
@@ -135,7 +146,8 @@ pub async fn unsolve(
              updated_at = NOW()
          WHERE slug = $1
            AND status = 'solved'::progress_status
-         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at",
+         RETURNING slug, status, last_code, notes, attempt_count, solved_at, updated_at, \
+                   COALESCE((SELECT SUM(a.elapsed_ms) FROM attempts a WHERE a.slug = $1), 0)::bigint AS total_elapsed_ms",
     )
     .bind(&slug)
     .fetch_optional(&state.pool)
@@ -146,8 +158,9 @@ pub async fn unsolve(
     }
 
     let existing = sqlx::query_as::<_, ProgressRecord>(
-        "SELECT slug, status, last_code, notes, attempt_count, solved_at, updated_at \
-         FROM problems_progress WHERE slug = $1",
+        "SELECT p.slug, p.status, p.last_code, p.notes, p.attempt_count, p.solved_at, p.updated_at, \
+                COALESCE((SELECT SUM(a.elapsed_ms) FROM attempts a WHERE a.slug = p.slug), 0)::bigint AS total_elapsed_ms \
+         FROM problems_progress p WHERE p.slug = $1",
     )
     .bind(&slug)
     .fetch_optional(&state.pool)

@@ -116,6 +116,72 @@ async fn submit_attempt_updates_progress(pool: PgPool) {
         "def two_sum(nums, target): return [0, 1]"
     );
     assert!(body["solved_at"].is_string());
+    assert_eq!(
+        body["total_elapsed_ms"].as_i64().expect("total_elapsed_ms"),
+        0,
+        "no elapsed_ms sent in legacy-shaped payloads; aggregate should be 0"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn progress_aggregates_total_elapsed_ms(pool: PgPool) {
+    let server = spawn(pool).await;
+    let client = client();
+    let access = login_access_token(&client, &server.base).await;
+
+    for elapsed in [12_345i64, 6_789i64, 1_000i64] {
+        let res = client
+            .post(format!("{}/api/attempts", server.base))
+            .bearer_auth(&access)
+            .json(&json!({
+                "slug": "two-sum",
+                "code": "def two_sum(nums, target): return [0, 1]",
+                "passed": true,
+                "duration_ms": 10,
+                "elapsed_ms": elapsed,
+                "pytest_summary": {"passed": 1, "failed": 0, "errored": 0, "total": 1, "tests": []}
+            }))
+            .send()
+            .await
+            .expect("attempt");
+        assert_eq!(res.status(), StatusCode::CREATED);
+    }
+
+    let progress = client
+        .get(format!("{}/api/progress/two-sum", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("progress");
+    assert_eq!(progress.status(), StatusCode::OK);
+    let body: serde_json::Value = progress.json().await.expect("progress body");
+    assert_eq!(
+        body["total_elapsed_ms"].as_i64().expect("total_elapsed_ms"),
+        12_345 + 6_789 + 1_000
+    );
+
+    // Also confirm /api/progress list returns the same aggregate.
+    let list: serde_json::Value = client
+        .get(format!("{}/api/progress", server.base))
+        .bearer_auth(&access)
+        .send()
+        .await
+        .expect("list")
+        .json()
+        .await
+        .expect("list body");
+    let entry = list
+        .as_array()
+        .expect("list array")
+        .iter()
+        .find(|r| r["slug"] == "two-sum")
+        .expect("two-sum row");
+    assert_eq!(
+        entry["total_elapsed_ms"]
+            .as_i64()
+            .expect("total_elapsed_ms"),
+        12_345 + 6_789 + 1_000
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

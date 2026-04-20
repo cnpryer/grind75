@@ -24,7 +24,16 @@ async function unsolve(slug: string) {
       method: 'POST',
     })
     if (!res.ok) {
-      unsolveError = `Failed to unsolve ${slug} (${res.status})`
+      // The proxy returns `{ error, message }` on ApiError; read it best-effort so
+      // users see "token_expired" / "No progress for slug …" instead of just a status.
+      const body = (await res.json().catch(() => null)) as {
+        error?: string
+        message?: string
+      } | null
+      const detail = body?.message ?? body?.error
+      unsolveError = detail
+        ? `Failed to unsolve ${slug}: ${detail}`
+        : `Failed to unsolve ${slug} (${res.status})`
       return
     }
     await invalidateAll()

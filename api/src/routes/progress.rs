@@ -19,10 +19,18 @@ pub async fn list(
     _user: AuthUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ProgressRecord>>, AppError> {
+    // Pre-aggregate `attempts` once with a GROUP BY, then LEFT JOIN — a single
+    // pass instead of N correlated subqueries when the dashboard has many slugs.
     let rows = sqlx::query_as::<_, ProgressRecord>(
         "SELECT p.slug, p.status, p.last_code, p.notes, p.attempt_count, p.solved_at, p.updated_at, \
-                COALESCE((SELECT SUM(a.elapsed_ms) FROM attempts a WHERE a.slug = p.slug), 0)::bigint AS total_elapsed_ms \
-         FROM problems_progress p ORDER BY p.updated_at DESC",
+                COALESCE(a.total_elapsed_ms, 0)::bigint AS total_elapsed_ms \
+         FROM problems_progress p \
+         LEFT JOIN ( \
+             SELECT slug, SUM(elapsed_ms) AS total_elapsed_ms \
+             FROM attempts \
+             GROUP BY slug \
+         ) a ON a.slug = p.slug \
+         ORDER BY p.updated_at DESC",
     )
     .fetch_all(&state.pool)
     .await?;

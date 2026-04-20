@@ -1,57 +1,19 @@
 <script lang="ts">
-import { goto, invalidateAll } from '$app/navigation'
+import { enhance } from '$app/forms'
+import { goto } from '$app/navigation'
 import type { SettingsRecord } from '$lib/api/client'
 
 let { data } = $props()
 
 // Split "authoritative server value" from "optimistic override" so we can flip
-// the checkbox instantly while the PUT is in flight. `optimistic` is cleared
-// whenever the load re-runs (after invalidateAll) or when the save fails.
+// the checkbox instantly while the action is in flight. `optimistic` is cleared
+// once the load re-runs (after update()) or when the save fails.
 let optimistic = $state<SettingsRecord | null>(null)
 const autoStartTimer = $derived(optimistic?.auto_start_timer ?? data.settings.auto_start_timer)
 const lastSavedAt = $derived(optimistic?.updated_at ?? data.settings.updated_at)
 
 let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle')
 let saveError = $state<string | null>(null)
-
-async function toggleAutoStart(e: Event) {
-  const target = e.currentTarget as HTMLInputElement
-  const next = target.checked
-  // Optimistic update so the UI responds instantly.
-  optimistic = {
-    auto_start_timer: next,
-    updated_at: new Date().toISOString(),
-  }
-  saveState = 'saving'
-  saveError = null
-  try {
-    const res = await fetch('/api/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auto_start_timer: next }),
-    })
-    if (!res.ok) {
-      const body = (await res.json().catch(() => null)) as {
-        error?: string
-        message?: string
-      } | null
-      const detail = body?.message ?? body?.error
-      throw new Error(detail ?? `Failed to save settings (${res.status})`)
-    }
-    const updated: SettingsRecord = await res.json()
-    optimistic = updated
-    saveState = 'saved'
-    // Refresh other loaders (e.g. problem page) so the new setting is picked
-    // up on next navigation without a hard reload. Clears `optimistic` below.
-    await invalidateAll()
-    optimistic = null
-  } catch (err) {
-    saveState = 'error'
-    saveError = err instanceof Error ? err.message : 'Failed to save settings'
-    // Roll back to the server's value.
-    optimistic = null
-  }
-}
 
 async function logout() {
   await fetch('/api/auth/logout', { method: 'POST' })
@@ -79,32 +41,63 @@ async function logout() {
 
   <section class="rounded border border-gray-200 p-5">
     <h2 class="mb-4 text-lg font-medium">Timer</h2>
-    <label class="flex items-start gap-3">
-      <input
-        type="checkbox"
-        class="mt-1 h-4 w-4"
-        checked={autoStartTimer}
-        onchange={toggleAutoStart}
-        disabled={saveState === 'saving'}
-      />
-      <span>
-        <span class="block text-sm font-medium text-gray-900">Auto-start timer on problem open</span>
-        <span class="mt-0.5 block text-xs text-gray-500">
-          When enabled, the per-problem timer starts automatically as soon as you open a
-          problem page. Otherwise you start it manually.
+    <form
+      method="POST"
+      action="?/updateSettings"
+      use:enhance={({ formData }) => {
+        // Normalise checkbox: "on" when checked, absent when not.
+        // Set an explicit boolean string so the action can parse it cleanly.
+        const next = formData.has('auto_start_timer')
+        formData.set('auto_start_timer', String(next))
+        // Optimistic update so the UI responds instantly.
+        optimistic = { auto_start_timer: next, updated_at: new Date().toISOString() }
+        saveState = 'saving'
+        saveError = null
+
+        return async ({ result, update }) => {
+          if (result.type === 'success' && result.data?.settings) {
+            optimistic = result.data.settings as SettingsRecord
+            saveState = 'saved'
+          } else if (result.type === 'failure') {
+            saveState = 'error'
+            saveError = (result.data?.error as string) ?? 'Failed to save settings'
+            optimistic = null
+          }
+          // Re-run load functions (refreshes other pages that depend on settings)
+          // without resetting the form. Clears `optimistic` below once data updates.
+          await update({ reset: false })
+          if (result.type === 'success') optimistic = null
+        }
+      }}
+    >
+      <label class="flex items-start gap-3">
+        <input
+          type="checkbox"
+          name="auto_start_timer"
+          class="mt-1 h-4 w-4"
+          checked={autoStartTimer}
+          onchange={(e) => (e.currentTarget as HTMLInputElement).form?.requestSubmit()}
+          disabled={saveState === 'saving'}
+        />
+        <span>
+          <span class="block text-sm font-medium text-gray-900">Auto-start timer on problem open</span>
+          <span class="mt-0.5 block text-xs text-gray-500">
+            When enabled, the per-problem timer starts automatically as soon as you open a
+            problem page. Otherwise you start it manually.
+          </span>
         </span>
-      </span>
-    </label>
-    <div class="mt-3 text-xs">
-      {#if saveState === 'saving'}
-        <span class="text-gray-500">Saving…</span>
-      {:else if saveState === 'saved'}
-        <span class="text-green-700">Saved · last updated {new Date(lastSavedAt).toLocaleString()}</span>
-      {:else if saveState === 'error'}
-        <span class="text-red-700">{saveError}</span>
-      {:else}
-        <span class="text-gray-500">Last updated {new Date(lastSavedAt).toLocaleString()}</span>
-      {/if}
-    </div>
+      </label>
+      <div class="mt-3 text-xs">
+        {#if saveState === 'saving'}
+          <span class="text-gray-500">Saving…</span>
+        {:else if saveState === 'saved'}
+          <span class="text-green-700">Saved · last updated {new Date(lastSavedAt).toLocaleString()}</span>
+        {:else if saveState === 'error'}
+          <span class="text-red-700">{saveError}</span>
+        {:else}
+          <span class="text-gray-500">Last updated {new Date(lastSavedAt).toLocaleString()}</span>
+        {/if}
+      </div>
+    </form>
   </section>
 </main>

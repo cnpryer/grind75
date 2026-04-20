@@ -50,6 +50,7 @@ pub fn client() -> reqwest::Client {
         .expect("client")
 }
 
+#[allow(dead_code)]
 pub async fn login_access_token(client: &reqwest::Client, base: &str) -> String {
     let login: serde_json::Value = client
         .post(format!("{base}/api/auth/login"))

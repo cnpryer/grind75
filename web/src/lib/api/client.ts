@@ -53,6 +53,7 @@ export interface AttemptRecord {
 	code: string
 	passed: boolean
 	duration_ms: number
+	elapsed_ms: number
 	pytest_summary: unknown
 	created_at: string
 }
@@ -62,6 +63,7 @@ export interface CreateAttemptRequest {
 	code: string
 	passed: boolean
 	duration_ms: number
+	elapsed_ms?: number
 	pytest_summary: unknown
 }
 

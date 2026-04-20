@@ -6,6 +6,7 @@ import MonacoEditor from '$lib/monaco/MonacoEditor.svelte'
 import { TimeoutError } from '$lib/pyodide/protocol'
 import { type InitProgress, PyodideRunner, type RunResult } from '$lib/pyodide/runner'
 import { renderMarkdown } from '$lib/utils/markdown'
+import { formatElapsed, Timer } from '$lib/utils/timer.svelte'
 
 let { data } = $props()
 
@@ -44,6 +45,7 @@ $effect(() => {
     lastSlug = meta.slug
     hydrateFromData()
     runState = { kind: 'idle' }
+    timer.reset()
   }
 })
 
@@ -70,6 +72,8 @@ let notesState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle')
 let notesError = $state<string | null>(null)
 let notesSaveTimer: ReturnType<typeof setTimeout> | null = null
 
+const timer = new Timer()
+
 let runner: PyodideRunner | null = null
 function getRunner(): PyodideRunner {
   if (!runner) {
@@ -90,6 +94,7 @@ onDestroy(() => {
     clearTimeout(notesSaveTimer)
     notesSaveTimer = null
   }
+  timer.dispose()
 })
 
 async function executeRun(): Promise<RunResult> {
@@ -220,6 +225,8 @@ $effect(() => {
 async function submitAttempt() {
   submitState = 'submitting'
   submitError = null
+  timer.stop()
+  const elapsedMs = Math.round(timer.elapsedMs)
 
   try {
     const result =
@@ -235,7 +242,8 @@ async function submitAttempt() {
         slug: meta.slug,
         code,
         passed: summary.failed === 0 && summary.errored === 0,
-        duration_ms: result.durationMs,
+        duration_ms: Math.round(result.durationMs),
+        elapsed_ms: elapsedMs,
         pytest_summary: summary,
       }),
     })
@@ -246,6 +254,7 @@ async function submitAttempt() {
     await loadProgress()
     submitState = 'idle'
     codeSaveState = 'saved'
+    timer.reset()
   } catch (err) {
     submitState = 'error'
     submitError = err instanceof Error ? err.message : 'Unable to submit'
@@ -320,7 +329,7 @@ async function logout() {
     </section>
 
     <section class="flex min-h-0 flex-col">
-      <div class="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <div class="flex flex-wrap items-center justify-between gap-y-2 border-b border-gray-200 px-4 py-2">
         <div class="flex gap-1 text-sm">
           <button
             type="button"
@@ -353,7 +362,31 @@ async function logout() {
             Output
           </button>
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <div class="flex items-center gap-1 text-sm">
+            <span class="font-mono tabular-nums text-gray-700" aria-live="off">
+              {formatElapsed(timer.elapsedMs)}
+            </span>
+            <button
+              type="button"
+              class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+              onclick={() => timer.toggle()}
+              aria-label={timer.running ? 'Pause timer' : 'Start timer'}
+              title={timer.running ? 'Pause timer' : 'Start timer'}
+            >
+              {timer.running ? 'Pause' : 'Start'}
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              onclick={() => timer.reset()}
+              disabled={timer.elapsedMs === 0 && !timer.running}
+              aria-label="Reset timer"
+              title="Reset timer"
+            >
+              Reset
+            </button>
+          </div>
           <button
             type="button"
             class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
@@ -364,7 +397,7 @@ async function logout() {
           </button>
           <button
             type="button"
-            class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+            class="whitespace-nowrap rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
             onclick={resetToStarter}
             disabled={runState.kind === 'running' || runState.kind === 'loading'}
           >

@@ -4,63 +4,16 @@
 //! database and applies `./migrations`. Run with `cargo test -p api`.
 //! Requires `DATABASE_URL` pointing at a live Postgres (see `docker-compose.yml`).
 
-use std::net::SocketAddr;
-use std::time::Duration;
+mod common;
 
-use api::{app, config::Config};
 use reqwest::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
-use tokio::net::TcpListener;
-
-struct TestServer {
-    base: String,
-    _task: tokio::task::JoinHandle<()>,
-}
-
-async fn spawn(pool: PgPool) -> TestServer {
-    let password_hash = api::auth::password::hash_password("dev").expect("hash");
-    let config = Config {
-        database_url: String::new(),
-        jwt_secret: "test-secret-0123456789abcdef".to_string(),
-        api_host: "127.0.0.1".to_string(),
-        api_port: 0,
-        web_url: "http://localhost:5173".to_string(),
-        admin_username: "admin".to_string(),
-        admin_password_hash: password_hash,
-        access_token_ttl_secs: 900,
-        refresh_token_ttl_secs: 2_592_000,
-    };
-    let router = app::create_router(pool, config);
-
-    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
-    let addr = listener.local_addr().expect("addr");
-    let task = tokio::spawn(async move {
-        axum::serve(
-            listener,
-            router.into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .await
-        .expect("serve");
-    });
-
-    TestServer {
-        base: format!("http://{addr}"),
-        _task: task,
-    }
-}
-
-fn client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .timeout(Duration::from_secs(5))
-        .build()
-        .expect("client")
-}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn login_issues_tokens_and_me_resolves(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let login = client
         .post(format!("{}/api/auth/login", server.base))
@@ -90,8 +43,8 @@ async fn login_issues_tokens_and_me_resolves(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn me_without_token_is_token_missing(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let res = client
         .get(format!("{}/api/auth/me", server.base))
@@ -105,8 +58,8 @@ async fn me_without_token_is_token_missing(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn bad_password_is_credentials_invalid(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let res = client
         .post(format!("{}/api/auth/login", server.base))
@@ -123,8 +76,8 @@ async fn bad_password_is_credentials_invalid(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn unknown_user_is_credentials_invalid(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let res = client
         .post(format!("{}/api/auth/login", server.base))
@@ -139,8 +92,8 @@ async fn unknown_user_is_credentials_invalid(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn refresh_rotates_and_replay_revokes(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     // 1. Login.
     let login: serde_json::Value = client
@@ -202,8 +155,8 @@ async fn refresh_rotates_and_replay_revokes(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn logout_revokes_refresh_token(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let login: serde_json::Value = client
         .post(format!("{}/api/auth/login", server.base))
@@ -239,8 +192,8 @@ async fn logout_revokes_refresh_token(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn garbage_token_is_token_invalid(pool: PgPool) {
-    let server = spawn(pool).await;
-    let client = client();
+    let server = common::spawn(pool).await;
+    let client = common::client();
 
     let res = client
         .get(format!("{}/api/auth/me", server.base))

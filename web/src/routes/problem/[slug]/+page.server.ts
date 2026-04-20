@@ -22,14 +22,15 @@ export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	// Fetch in parallel with the progress lookup above would be slightly faster,
 	// but keeping this sequential keeps the 404 fall-through branch readable and
 	// the page load is already dominated by the Pyodide bundle on the client.
-	// Fall back to defaults if the settings endpoint is unreachable so the
-	// problem view keeps loading even when preferences are unavailable.
+	// Fall back to defaults if the settings endpoint is unreachable (network
+	// error) or returns a non-OK response, so the problem view keeps loading
+	// even when preferences are unavailable.
 	let settings = { auto_start_timer: false }
 	try {
 		const fetched = await api.getSettings()
 		settings = { auto_start_timer: fetched.auto_start_timer }
 	} catch (err) {
-		if (!(err instanceof ApiError)) throw err
+		if (!(err instanceof ApiError) && !(err instanceof TypeError)) throw err
 	}
 
 	return {

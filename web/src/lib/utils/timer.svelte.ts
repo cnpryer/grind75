@@ -58,3 +58,21 @@ export function formatElapsed(ms: number): string {
 	}
 	return `${mm}:${ss}`
 }
+
+/**
+ * Coarse, human-readable formatter for cumulative totals shown on the
+ * dashboard (e.g. "1h 23m", "12m", "45s"). Intentionally less precise than
+ * `formatElapsed` — callers care about magnitude, not seconds.
+ */
+export function formatCumulativeElapsed(ms: number): string {
+	const totalSeconds = Math.floor(ms / 1000)
+	if (totalSeconds < 60) {
+		return `${totalSeconds}s`
+	}
+	const hours = Math.floor(totalSeconds / 3600)
+	const minutes = Math.floor((totalSeconds % 3600) / 60)
+	if (hours > 0) {
+		return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+	}
+	return `${minutes}m`
+}

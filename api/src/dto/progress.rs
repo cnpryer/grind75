@@ -19,6 +19,8 @@ pub struct ProgressRecord {
     pub attempt_count: i32,
     pub solved_at: Option<chrono::DateTime<chrono::Utc>>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    /// Sum of `attempts.elapsed_ms` across every submission for this slug.
+    pub total_elapsed_ms: i64,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]

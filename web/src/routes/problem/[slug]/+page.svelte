@@ -483,13 +483,13 @@ async function logout() {
                 <li class="rounded border border-gray-200 p-2">
                   <div class="flex items-center gap-2">
                     <span
-                      class="inline-block h-2 w-2 rounded-full"
+                      class="inline-block h-2 w-2 shrink-0 rounded-full"
                       class:bg-green-500={t.outcome === 'passed'}
                       class:bg-red-500={t.outcome === 'failed' || t.outcome === 'error'}
                       class:bg-gray-400={t.outcome === 'skipped'}
                     ></span>
-                    <span class="font-mono text-xs">{t.name}</span>
-                    <span class="ml-auto text-xs text-gray-500">{t.durationMs}ms</span>
+                    <span class="min-w-0 flex-1 truncate font-mono text-xs" title={t.name}>{t.name}</span>
+                    <span class="shrink-0 text-xs text-gray-500">{t.durationMs}ms</span>
                   </div>
                   {#if t.failureMessage}
                     <pre class="mt-2 overflow-auto rounded bg-gray-50 p-2 text-xs text-red-700">{t.failureMessage}</pre>

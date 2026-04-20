@@ -107,6 +107,7 @@ const statusLabel: Record<string, string> = {
     <h1 class="text-3xl font-semibold tracking-tight">grind75</h1>
     <div class="flex items-center gap-3 text-sm text-gray-600">
       <span>{data.user?.username}</span>
+      <a href="/settings" class="text-gray-500 hover:text-black">Settings</a>
       <button type="button" class="text-gray-500 hover:text-black" onclick={logout}>
         Sign out
       </button>

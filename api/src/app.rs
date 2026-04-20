@@ -33,6 +33,8 @@ use crate::routes;
         routes::attempts::list,
         routes::attempts::create,
         routes::attempts::heatmap,
+        routes::settings::read,
+        routes::settings::update,
     ),
     components(schemas(
         routes::health::HealthResponse,
@@ -48,6 +50,8 @@ use crate::routes;
         crate::dto::attempt::CreateAttemptRequest,
         crate::dto::attempt::AttemptRecord,
         crate::dto::attempt::HeatmapCell,
+        crate::dto::settings::SettingsRecord,
+        crate::dto::settings::UpdateSettingsRequest,
     )),
     tags(
         (name = "health", description = "Health check"),
@@ -55,6 +59,7 @@ use crate::routes;
         (name = "problems", description = "Problem catalog"),
         (name = "progress", description = "Per-problem progress"),
         (name = "attempts", description = "Submission history"),
+        (name = "settings", description = "User preferences"),
     ),
     modifiers(&SecurityAddon)
 )]
@@ -135,6 +140,10 @@ pub fn create_router(pool: PgPool, config: Config) -> Router {
             get(routes::attempts::list).post(routes::attempts::create),
         )
         .route("/api/attempts/heatmap", get(routes::attempts::heatmap))
+        .route(
+            "/api/settings",
+            get(routes::settings::read).put(routes::settings::update),
+        )
         .merge(SwaggerUi::new("/api/docs").url("/api/docs/openapi.json", ApiDoc::openapi()))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

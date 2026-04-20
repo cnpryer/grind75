@@ -80,6 +80,16 @@ export interface HeatmapCell {
 	count: number
 }
 
+export interface SettingsRecord {
+	/** When true, the problem page starts the timer automatically on open. */
+	auto_start_timer: boolean
+	updated_at: string
+}
+
+export interface UpdateSettingsRequest {
+	auto_start_timer?: boolean
+}
+
 /**
  * Minimal typed HTTP client for the Rust API. Constructed server-side only
  * (inside `+*.server.ts` / `+server.ts`) with the access token read from
@@ -179,5 +189,14 @@ export class ApiClient {
 		if (days !== undefined) query.set('days', String(days))
 		const suffix = query.size > 0 ? `?${query.toString()}` : ''
 		return this.request<HeatmapCell[]>('GET', `/api/attempts/heatmap${suffix}`)
+	}
+
+	// --- Settings ---
+	getSettings() {
+		return this.request<SettingsRecord>('GET', '/api/settings')
+	}
+
+	updateSettings(data: UpdateSettingsRequest) {
+		return this.request<SettingsRecord>('PUT', '/api/settings', data)
 	}
 }

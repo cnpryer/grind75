@@ -365,7 +365,7 @@ Adapt:
 
 - [x] **M8 - Submission heatmap.** Heatmap of submission counts top of dashboard, inspired by GitHub's contribution graph. Each square = one day; color intensity = number of attempts that day.
 
-- [ ] **M9 — Timer and dashboard progression.** Per-problem start/stop timer, persisted per attempt. Submit also stops it. Dashboard shows total time across attempts. Site-wide setting to auto-start on problem open. A problem marked "solved" can _unsolved_ to indicate it's ready to be attempted again.
+- [x] **M9 — Timer and dashboard progression.** Per-problem start/stop timer, persisted per attempt. Submit also stops it. Dashboard shows total time across attempts. Site-wide setting to auto-start on problem open. A problem marked "solved" can _unsolved_ to indicate it's ready to be attempted again.
 
 - [ ] **M10 - UI polish.** Tailwind polish. Make problem view more usable in lower resolutions (responsive layout, scrollable panes, tabs for problem panel and code box). Support both dark and light themes.
 

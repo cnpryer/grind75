@@ -6,7 +6,7 @@ import MonacoEditor from '$lib/monaco/MonacoEditor.svelte'
 import { TimeoutError } from '$lib/pyodide/protocol'
 import { type InitProgress, PyodideRunner, type RunResult } from '$lib/pyodide/runner'
 import { renderMarkdown } from '$lib/utils/markdown'
-import { Timer, formatElapsed } from '$lib/utils/timer.svelte'
+import { formatElapsed, Timer } from '$lib/utils/timer.svelte'
 
 let { data } = $props()
 
@@ -226,7 +226,7 @@ async function submitAttempt() {
   submitState = 'submitting'
   submitError = null
   timer.stop()
-  const elapsedMs = timer.elapsedMs
+  const elapsedMs = Math.round(timer.elapsedMs)
 
   try {
     const result =

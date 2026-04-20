@@ -42,10 +42,7 @@ export class Timer {
 	}
 
 	dispose() {
-		if (this.intervalId) {
-			clearInterval(this.intervalId)
-			this.intervalId = null
-		}
+		this.stop()
 	}
 }
 

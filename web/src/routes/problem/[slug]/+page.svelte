@@ -1,5 +1,5 @@
 <script lang="ts">
-import { onDestroy, untrack } from 'svelte'
+import { onDestroy, onMount, untrack } from 'svelte'
 import { beforeNavigate } from '$app/navigation'
 import type { ProgressRecord, ProgressStatus } from '$lib/api/client'
 import MonacoEditor from '$lib/monaco/MonacoEditor.svelte'
@@ -40,12 +40,26 @@ function hydrateFromData() {
 // Initialize synchronously so the editor sees the correct value on first render.
 hydrateFromData()
 
+// Respect the user-controlled setting set via /settings. Read reactively so
+// a settings change followed by invalidateAll() propagates without a reload.
+const autoStartTimer = $derived(data.settings?.auto_start_timer ?? false)
+
+// Initial open: auto-start on client mount so we don't tick during SSR.
+onMount(() => {
+  if (untrack(() => autoStartTimer)) {
+    timer.start()
+  }
+})
+
 $effect(() => {
   if (meta.slug !== lastSlug) {
     lastSlug = meta.slug
     hydrateFromData()
     runState = { kind: 'idle' }
     timer.reset()
+    if (untrack(() => autoStartTimer)) {
+      timer.start()
+    }
   }
 })
 
@@ -295,6 +309,7 @@ async function logout() {
       </span>
       <span>{attemptCount} attempt{attemptCount === 1 ? '' : 's'}</span>
       <span>{data.user?.username}</span>
+      <a href="/settings" class="text-gray-500 hover:text-black">Settings</a>
       <button type="button" class="text-gray-500 hover:text-black" onclick={logout}>
         Sign out
       </button>

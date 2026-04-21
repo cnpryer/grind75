@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/cnpryer/grind75/actions/workflows/ci.yml/badge.svg)](https://github.com/cnpryer/grind75/actions/workflows/ci.yml)
 
-An experimental selt-hosted grind75 app focused on tool-enhanced learning and a delightful user experience.
+An experimental self-hosted grind75 app focused on tool-enhanced learning and a delightful user experience.
 
 ## Quickstart
 

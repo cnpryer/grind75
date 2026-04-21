@@ -27,35 +27,35 @@ let submitting = $state(false)
     }}
   >
     <label class="block">
-      <span class="block text-sm font-medium text-gray-700">Username</span>
+      <span class="block text-sm font-medium text-gray-700 dark:text-gray-200">Username</span>
       <input
         type="text"
         name="username"
         autocomplete="username"
         required
         value={form?.username ?? ''}
-        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
+        class="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-black focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-200"
       />
     </label>
     <label class="block">
-      <span class="block text-sm font-medium text-gray-700">Password</span>
+      <span class="block text-sm font-medium text-gray-700 dark:text-gray-200">Password</span>
       <input
         type="password"
         name="password"
         autocomplete="current-password"
         required
-        class="mt-1 block w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-black focus:outline-none"
+        class="mt-1 block w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-black focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-200"
       />
     </label>
 
     {#if form?.error}
-      <p class="text-sm text-red-600" role="alert">{form.error}</p>
+      <p class="text-sm text-red-600 dark:text-red-400" role="alert">{form.error}</p>
     {/if}
 
     <button
       type="submit"
       disabled={submitting}
-      class="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+      class="w-full rounded bg-black px-3 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white"
     >
       {submitting ? 'Signing in…' : 'Sign in'}
     </button>

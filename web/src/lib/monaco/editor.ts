@@ -53,4 +53,9 @@ export function createEditor(
 	})
 }
 
+export function setGlobalTheme(theme: 'vs' | 'vs-dark'): void {
+	configureOnce()
+	monaco.editor.setTheme(theme)
+}
+
 export type { monaco }

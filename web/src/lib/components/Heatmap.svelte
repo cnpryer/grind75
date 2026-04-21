@@ -65,11 +65,11 @@ let tooltipTop = $state(0)
 
 function colorClass(count: number, future: boolean): string {
   if (future) return 'bg-transparent'
-  if (count === 0) return 'bg-gray-100'
-  if (count <= 2) return 'bg-green-200'
-  if (count <= 5) return 'bg-green-400'
-  if (count <= 9) return 'bg-green-600'
-  return 'bg-green-800'
+  if (count === 0) return 'bg-gray-100 dark:bg-gray-800'
+  if (count <= 2) return 'bg-green-200 dark:bg-green-900'
+  if (count <= 5) return 'bg-green-400 dark:bg-green-700'
+  if (count <= 9) return 'bg-green-600 dark:bg-green-500'
+  return 'bg-green-800 dark:bg-green-300'
 }
 
 function tooltipText(day: DayCell): string {
@@ -97,8 +97,8 @@ function hideTooltip(): void {
 
 <section class="mb-6">
   <div class="mb-2 flex items-baseline justify-between">
-    <h2 class="text-sm font-medium text-gray-700">Activity</h2>
-    <span class="text-xs text-gray-500">
+    <h2 class="text-sm font-medium text-gray-700 dark:text-gray-200">Activity</h2>
+    <span class="text-xs text-gray-500 dark:text-gray-400">
       {totalAttempts} attempt{totalAttempts === 1 ? '' : 's'} · last {weeks} weeks
     </span>
   </div>
@@ -106,7 +106,7 @@ function hideTooltip(): void {
     <div class="flex gap-0.5" role="img" aria-label="Submission heatmap">
       {#each columns as column (column.days[0].date)}
         <div class="flex flex-col gap-0.5">
-          <div class="h-3 text-[10px] leading-none text-gray-500">
+          <div class="h-3 text-[10px] leading-none text-gray-500 dark:text-gray-400">
             {column.monthLabel ?? ''}
           </div>
           {#each column.days as day (day.date)}
@@ -126,7 +126,7 @@ function hideTooltip(): void {
 {#if hovered}
   <div
     role="tooltip"
-    class="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg"
+    class="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white shadow-lg dark:bg-gray-100 dark:text-gray-900"
     style:left="{tooltipLeft}px"
     style:top="{tooltipTop}px"
   >

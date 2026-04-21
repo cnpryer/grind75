@@ -1,6 +1,7 @@
 <script lang="ts">
 import type { editor as MonacoEditorNS } from 'monaco-editor'
 import { browser } from '$app/environment'
+import { theme } from '$lib/utils/theme.svelte'
 
 type Props = {
   value?: string
@@ -28,6 +29,8 @@ let container: HTMLDivElement | null = null
 let instance: MonacoEditorNS.IStandaloneCodeEditor | null = null
 let suppressExternalSync = false
 
+const monacoTheme = $derived<'vs' | 'vs-dark'>(theme.resolved === 'dark' ? 'vs-dark' : 'vs')
+
 $effect(() => {
   if (!browser || !container) return
 
@@ -35,9 +38,10 @@ $effect(() => {
   let disposers: Array<() => void> = []
 
   ;(async () => {
-    const { createEditor } = await import('$lib/monaco/editor')
+    const { createEditor, setGlobalTheme } = await import('$lib/monaco/editor')
     if (cancelled || !container) return
-    const editor = createEditor(container, { value, language, readOnly })
+    const editor = createEditor(container, { value, language, readOnly, theme: monacoTheme })
+    setGlobalTheme(monacoTheme)
     instance = editor
     const sub = editor.onDidChangeModelContent(() => {
       const next = editor.getValue()

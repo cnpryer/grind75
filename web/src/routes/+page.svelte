@@ -102,20 +102,20 @@ const statusLabel: Record<string, string> = {
   <title>grind75</title>
 </svelte:head>
 
-<main class="mx-auto max-w-3xl p-8">
-  <header class="mb-8 flex items-center justify-between">
-    <h1 class="text-3xl font-semibold tracking-tight">grind75</h1>
-    <div class="flex items-center gap-3 text-sm text-gray-600">
+<main class="mx-auto max-w-3xl p-4 sm:p-8">
+  <header class="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight">grind75</h1>
+    <div class="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
       <span>{data.user?.username}</span>
-      <a href="/settings" class="text-gray-500 hover:text-black">Settings</a>
-      <button type="button" class="text-gray-500 hover:text-black" onclick={logout}>
+      <a href="/settings" class="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white">Settings</a>
+      <button type="button" class="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white" onclick={logout}>
         Sign out
       </button>
     </div>
   </header>
   <Heatmap cells={data.heatmap ?? []} />
   {#if unsolveError}
-    <p class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+    <p class="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
       {unsolveError}
     </p>
   {/if}
@@ -126,14 +126,14 @@ const statusLabel: Record<string, string> = {
         <ul class="space-y-2">
           {#each group.problems as entry (entry.problem.slug)}
             <li
-              class="flex items-center justify-between gap-2 rounded border border-gray-200 px-4 py-3 hover:bg-gray-50"
+              class="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 px-4 py-3 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800"
             >
               <a
                 href={`/problem/${entry.problem.slug}`}
                 class="min-w-0 flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <p class="truncate text-sm font-medium text-gray-900">{entry.problem.title}</p>
-                <p class="text-xs text-gray-500">
+                <p class="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{entry.problem.title}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
                   #{entry.problem.order} · {entry.problem.slug}
                   {#if entry.progress}
                     · {entry.progress.attempt_count} attempt{entry.progress.attempt_count === 1 ? '' : 's'}
@@ -147,24 +147,30 @@ const statusLabel: Record<string, string> = {
                 {#if entry.progress?.status === 'solved'}
                   <button
                     type="button"
-                    class="whitespace-nowrap rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    class="whitespace-nowrap rounded border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                     disabled={unsolvingSlug === entry.problem.slug}
                     onclick={() => unsolve(entry.problem.slug)}
                   >
                     {unsolvingSlug === entry.problem.slug ? 'Unsolving…' : 'Unsolve'}
                   </button>
                 {/if}
-                <span class="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase tracking-wide text-gray-600">
+                <span class="rounded bg-gray-100 px-2 py-0.5 text-xs uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                   {entry.problem.difficulty}
                 </span>
                 <span
                   class="rounded px-2 py-0.5 text-xs"
                   class:bg-gray-100={!entry.progress || entry.progress.status === 'not_started'}
                   class:text-gray-600={!entry.progress || entry.progress.status === 'not_started'}
+                  class:dark:bg-gray-800={!entry.progress || entry.progress.status === 'not_started'}
+                  class:dark:text-gray-300={!entry.progress || entry.progress.status === 'not_started'}
                   class:bg-amber-100={entry.progress?.status === 'attempted'}
                   class:text-amber-700={entry.progress?.status === 'attempted'}
+                  class:dark:bg-amber-950={entry.progress?.status === 'attempted'}
+                  class:dark:text-amber-300={entry.progress?.status === 'attempted'}
                   class:bg-green-100={entry.progress?.status === 'solved'}
                   class:text-green-700={entry.progress?.status === 'solved'}
+                  class:dark:bg-green-950={entry.progress?.status === 'solved'}
+                  class:dark:text-green-300={entry.progress?.status === 'solved'}
                 >
                   {statusLabel[entry.progress?.status ?? 'not_started']}
                 </span>

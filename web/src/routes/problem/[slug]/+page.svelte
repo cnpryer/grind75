@@ -19,7 +19,7 @@ const timeoutMs = $derived(meta.execution_timeout_seconds * 1000)
 let code = $state('')
 let notes = $state('')
 // 'problem' is only surfaced on narrow viewports where the markdown + notes
-// pane stacks behind the editor in the tab bar. On md+ both panels are
+// pane stacks behind the editor in the tab bar. On lg+ both panels are
 // visible side-by-side and 'problem' is never the active tab.
 let activeTab = $state<'problem' | 'code' | 'tests' | 'output'>('code')
 let progressStatus = $state<ProgressStatus>('not_started')

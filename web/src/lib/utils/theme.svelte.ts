@@ -31,8 +31,8 @@ function applyToDocument(resolved: ResolvedTheme): void {
 }
 
 class ThemeStore {
-	preference = $state<ThemePreference>('system')
-	systemDark = $state(false)
+	preference = $state<ThemePreference>(browser ? readStoredPreference() : 'system')
+	systemDark = $state(browser ? systemPrefersDark() : false)
 	resolved = $derived<ResolvedTheme>(resolve(this.preference, this.systemDark))
 
 	private mql: MediaQueryList | null = null

@@ -50,10 +50,11 @@ async function logout() {
     <h2 class="mb-4 text-lg font-medium">Appearance</h2>
     <fieldset>
       <legend class="mb-2 text-sm font-medium text-gray-900 dark:text-gray-100">Theme</legend>
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Theme">
         {#each themeOptions as option (option.value)}
           <button
             type="button"
+            role="radio"
             class="rounded border px-3 py-1 text-sm"
             class:border-gray-900={theme.preference === option.value}
             class:bg-gray-900={theme.preference === option.value}
@@ -67,7 +68,7 @@ async function logout() {
             class:dark:border-gray-700={theme.preference !== option.value}
             class:dark:text-gray-300={theme.preference !== option.value}
             class:dark:hover:bg-gray-800={theme.preference !== option.value}
-            aria-pressed={theme.preference === option.value}
+            aria-checked={theme.preference === option.value}
             onclick={() => theme.setPreference(option.value)}
           >
             {option.label}

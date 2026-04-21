@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { editor as MonacoEditorNS } from 'monaco-editor'
+import { untrack } from 'svelte'
 import { browser } from '$app/environment'
 import { theme } from '$lib/utils/theme.svelte'
 
@@ -29,8 +30,6 @@ let container: HTMLDivElement | null = null
 let instance: MonacoEditorNS.IStandaloneCodeEditor | null = null
 let suppressExternalSync = false
 
-const monacoTheme = $derived<'vs' | 'vs-dark'>(theme.resolved === 'dark' ? 'vs-dark' : 'vs')
-
 $effect(() => {
   if (!browser || !container) return
 
@@ -40,6 +39,7 @@ $effect(() => {
   ;(async () => {
     const { createEditor, setGlobalTheme } = await import('$lib/monaco/editor')
     if (cancelled || !container) return
+    const monacoTheme = untrack(() => theme.resolved === 'dark' ? 'vs-dark' : 'vs')
     const editor = createEditor(container, { value, language, readOnly, theme: monacoTheme })
     setGlobalTheme(monacoTheme)
     instance = editor
@@ -99,6 +99,13 @@ $effect(() => {
 
 $effect(() => {
   instance?.updateOptions({ readOnly })
+})
+
+// Update Monaco theme without recreating the editor when the site theme changes.
+$effect(() => {
+  const monacoTheme = theme.resolved === 'dark' ? 'vs-dark' : 'vs'
+  if (!instance) return
+  import('$lib/monaco/editor').then(({ setGlobalTheme }) => setGlobalTheme(monacoTheme))
 })
 </script>
 

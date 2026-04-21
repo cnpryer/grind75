@@ -39,7 +39,7 @@ $effect(() => {
   ;(async () => {
     const { createEditor, setGlobalTheme } = await import('$lib/monaco/editor')
     if (cancelled || !container) return
-    const monacoTheme = untrack(() => theme.resolved === 'dark' ? 'vs-dark' : 'vs')
+    const monacoTheme = untrack(() => (theme.resolved === 'dark' ? 'vs-dark' : 'vs'))
     const editor = createEditor(container, { value, language, readOnly, theme: monacoTheme })
     setGlobalTheme(monacoTheme)
     instance = editor

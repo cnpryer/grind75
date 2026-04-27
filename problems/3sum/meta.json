@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 15,
+  "slug": "3sum",
+  "title": "3Sum",
+  "difficulty": "medium",
+  "pattern": "two-pointer",
+  "leetcode_url": "https://leetcode.com/problems/3sum/",
+  "recommended_minutes": 30,
+  "execution_timeout_seconds": 10,
+  "tags": ["array", "two-pointer", "sorting"],
+  "order": 15,
+  "entry_function": "three_sum"
+}

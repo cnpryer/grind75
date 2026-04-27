@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": 14,
+  "slug": "longest-substring-without-repeating-characters",
+  "title": "Longest Substring Without Repeating Characters",
+  "difficulty": "medium",
+  "pattern": "sliding-window",
+  "leetcode_url": "https://leetcode.com/problems/longest-substring-without-repeating-characters/",
+  "recommended_minutes": 30,
+  "execution_timeout_seconds": 10,
+  "tags": ["string", "sliding-window", "hashmap"],
+  "order": 14,
+  "entry_function": "length_of_longest_substring"
+}

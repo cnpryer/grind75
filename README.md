@@ -4,6 +4,9 @@
 
 An experimental self-hosted grind75 app focused on tool-enhanced learning and a delightful user experience.
 
+> [!NOTE]
+> This project was built with various agents. Us at your own risk.
+
 ## Quickstart
 
 ```sh
